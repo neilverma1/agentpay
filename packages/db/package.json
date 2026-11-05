@@ -1,0 +1,38 @@
+{
+  "name": "@workspace/db",
+  "version": "1.0.0",
+  "private": true,
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "scripts": {
+    "build": "tsc --build",
+    "check-types": "tsc --noEmit",
+    "clean": "rm -rf dist .turbo node_modules",
+    "dev": "drizzle-kit studio",
+    "studio": "drizzle-kit studio",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:push": "drizzle-kit push"
+  },
+  "prettier": "@workspace/prettier-config",
+  "dependencies": {
+    "@t3-oss/env-nextjs": "catalog:core",
+    "dotenv": "catalog:core",
+    "drizzle-orm": "catalog:core",
+    "pg": "catalog:core",
+    "zod": "catalog:core"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:dev",
+    "@types/pg": "catalog:core",
+    "@workspace/typescript-config": "workspace:*",
+    "drizzle-kit": "catalog:dev",
+    "typescript": "catalog:dev"
+  }
+}

@@ -10,7 +10,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 
 | #   | Feature                                    | Phase      | Status  |
 | --- | ------------------------------------------ | ---------- | ------- |
-| 1   | Stack and architecture                     | Foundation | planned |
+| 1   | Stack and architecture                     | Foundation | done    |
 | 2   | Coding standards and tooling               | Foundation | planned |
 | 3   | Core data model                            | Foundation | planned |
 | 4   | Design system and UI foundation            | Foundation | planned |
@@ -21,11 +21,14 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 
 ## Foundations
 
-### 1. Stack and architecture · needs a decision
+### 1. Stack and architecture
 
 Decide the stack and scaffold a runnable project with a modern frontend, agent backend, and PayPal SDK so every later slice builds on real structure. **Done when:** the stack is recorded in a spec and the scaffold boots locally and passes build.
 
-- [ ] Decide the stack (spec): `/architect stack and architecture`
+spec [0001](../specs/0001-stack-and-architecture.md) · code in [apps/web/](../../apps/web/), [packages/db/](../../packages/db/)
+
+- [x] Decide the stack (spec): `/architect stack and architecture`
+- [x] Scaffold from the decision: `/develop stack and architecture`
 
 ### 2. Coding standards and tooling
 

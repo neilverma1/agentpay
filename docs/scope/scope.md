@@ -8,16 +8,16 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 
 ## At a glance
 
-| #   | Feature                                    | Phase      | Status  |
-| --- | ------------------------------------------ | ---------- | ------- |
-| 1   | Stack and architecture                     | Foundation | done    |
-| 2   | Coding standards and tooling               | Foundation | done    |
-| 3   | Core data model                            | Foundation | done    |
-| 4   | Design system and UI foundation            | Foundation | planned |
-| 5   | Core purchase loop                         | Slice 1    | planned |
-| 6   | Spending guardrails and approval threshold | Slice 2    | planned |
-| 7   | Real time audit telemetry grid             | Slice 3    | planned |
-| 8   | Webhook verification and state sync        | Slice 4    | planned |
+| #   | Feature                                    | Phase      | Status      |
+| --- | ------------------------------------------ | ---------- | ----------- |
+| 1   | Stack and architecture                     | Foundation | done        |
+| 2   | Coding standards and tooling               | Foundation | done        |
+| 3   | Core data model                            | Foundation | done        |
+| 4   | Design system and UI foundation            | Foundation | in-progress |
+| 5   | Core purchase loop                         | Slice 1    | planned     |
+| 6   | Spending guardrails and approval threshold | Slice 2    | planned     |
+| 7   | Real time audit telemetry grid             | Slice 3    | planned     |
+| 8   | Webhook verification and state sync        | Slice 4    | planned     |
 
 ## Foundations
 
@@ -50,11 +50,19 @@ spec [0002](../specs/0002-core-data-model/index.md) · code in [packages/db/](..
   - [x] Zod validation schemas and TypeScript type exports (AC-7)
   - [x] Drizzle migration generation and build verification (AC-1, AC-2)
 
-### 4. Design system and UI foundation · needs a decision
+### 4. Design system and UI foundation
 
-Establish a crisp financial dashboard visual language and base components for prompt input, status tags, and approval modals. **Done when:** style tokens and base components handle layout, clean typography, and interactive states.
+Establish a crisp financial dashboard visual language and base primitives in packages/ui for financial badges, item actions, input groups, and code traces. **Done when:** style tokens and base components handle layout, clean typography, financial status variants, and interactive states.
 
-- [ ] Design it (spec): `/architect design system and UI foundation`
+spec [0003](../specs/0003-design-system-and-ui-foundation/index.md) · code in [packages/ui/](../../packages/ui/)
+
+- [x] Design it (spec): `/architect design system and UI foundation`
+- [x] Build it: `/develop design system and UI foundation`
+  - [x] Financial status tokens and tabular typography utilities (AC-1, AC-2)
+  - [x] Financial status badges with built in semantic icons and live dots (AC-3)
+  - [x] Item layout components for action and confirmation cards (AC-4)
+  - [x] Code block and execution trace components with Shiki highlighting (AC-5)
+  - [x] Input group primitives for input and action compositions (AC-6)
 
 ## Slice 1: Core purchase loop
 

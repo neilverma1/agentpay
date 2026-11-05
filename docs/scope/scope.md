@@ -8,16 +8,16 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 
 ## At a glance
 
-| #   | Feature                                    | Phase      | Status      |
-| --- | ------------------------------------------ | ---------- | ----------- |
-| 1   | Stack and architecture                     | Foundation | done        |
-| 2   | Coding standards and tooling               | Foundation | done        |
-| 3   | Core data model                            | Foundation | done        |
-| 4   | Design system and UI foundation            | Foundation | done        |
-| 5   | Core purchase loop                         | Slice 1    | done        |
-| 6   | Spending guardrails and approval threshold | Slice 2    | in-progress |
-| 7   | Real time audit telemetry grid             | Slice 3    | planned     |
-| 8   | Webhook verification and state sync        | Slice 4    | planned     |
+| #   | Feature                                    | Phase      | Status  |
+| --- | ------------------------------------------ | ---------- | ------- |
+| 1   | Stack and architecture                     | Foundation | done    |
+| 2   | Coding standards and tooling               | Foundation | done    |
+| 3   | Core data model                            | Foundation | done    |
+| 4   | Design system and UI foundation            | Foundation | done    |
+| 5   | Core purchase loop                         | Slice 1    | done    |
+| 6   | Spending guardrails and approval threshold | Slice 2    | done    |
+| 7   | Real time audit telemetry grid             | Slice 3    | planned |
+| 8   | Webhook verification and state sync        | Slice 4    | planned |
 
 ## Foundations
 
@@ -89,11 +89,11 @@ Enforce daily spending caps, category rules, and a progressive dollar threshold 
 spec [0005](../specs/0005-spending-guardrails-and-approval-threshold/index.md) · code in [apps/web/](../../apps/web/)
 
 - [x] Design it (spec): `/architect spending guardrails and approval threshold`
-- [ ] Build it: `/develop spending guardrails and approval threshold`
-  - [ ] Policy evaluator and rolling 24 hour spend aggregation (AC-1, AC-2, AC-3)
-  - [ ] Purchase loop integration with guardrail branching and pause states (AC-1, AC-3, AC-4)
-  - [ ] Approvals REST API with atomic locking and PayPal capture execution (AC-5, AC-6, AC-7)
-  - [ ] Dashboard approval banner and interactive review cards (AC-8)
+- [x] Build it: /develop spending guardrails and approval threshold
+  - [x] Policy evaluator and rolling 24 hour spend aggregation (AC-1, AC-2, AC-3)
+  - [x] Purchase loop integration with guardrail branching and pause states (AC-1, AC-3, AC-4)
+  - [x] Approvals REST API with atomic locking and PayPal capture execution (AC-5, AC-6, AC-7)
+  - [x] Dashboard approval banner and interactive review cards (AC-8)
 
 ## Slice 3: Real time audit telemetry grid
 

@@ -1,7 +1,7 @@
 # 0005. Spending guardrails and approval threshold
 
 **Date**: 2026-11-06
-**Status**: Proposed
+**Status**: Completed
 
 ## Summary
 
@@ -140,25 +140,25 @@ No new environment variables required. Reuses existing `PAYPAL_CLIENT_ID`, `PAYP
 
 ## Build plan
 
-**Phase 1: Policy evaluator and rolling ledger**
+### **Phase 1: Policy evaluator and rolling ledger**
 
-- Create `apps/web/lib/agent/policy.ts` defining policy evaluation types, default policy generator, and rolling 24 hour spend aggregation query (satisfies AC-1, AC-2).
-- Implement category validation and dual tier decision logic returning auto approve, requires approval, or reject (satisfies AC-1, AC-3, AC-4).
+- [x] Create `apps/web/lib/agent/policy.ts` defining policy evaluation types, default policy generator, and rolling 24 hour spend aggregation query (satisfies AC-1, AC-2).
+- [x] Implement category validation and dual tier decision logic returning auto approve, requires approval, or reject (satisfies AC-1, AC-3, AC-4).
 
-**Phase 2: Purchase loop integration**
+### **Phase 2: Purchase loop integration**
 
-- Update `executeAgentPurchaseLoop` in `apps/web/lib/agent/purchase.ts` to load or seed agent policy, evaluate policy after intent parsing, and branch execution (satisfies AC-1, AC-3, AC-4).
-- Persist approval request records and update purchase intent statuses for paused or rejected flows (satisfies AC-4).
+- [x] Update `executeAgentPurchaseLoop` in `apps/web/lib/agent/purchase.ts` to load or seed agent policy, evaluate policy after intent parsing, and branch execution (satisfies AC-1, AC-3, AC-4).
+- [x] Persist approval request records and update purchase intent statuses for paused or rejected flows (satisfies AC-4).
 
-**Phase 3: Approvals REST API**
+### **Phase 3: Approvals REST API**
 
-- Implement `GET /api/v1/approvals` in `apps/web/app/api/v1/approvals/route.ts` with authentication and user ownership filters (satisfies AC-7).
-- Implement `POST /api/v1/approvals/[id]/decision` in `apps/web/app/api/v1/approvals/[id]/decision/route.ts` with atomic status update, ownership verification, and PayPal order capture (satisfies AC-5, AC-6).
+- [x] Implement `GET /api/v1/approvals` in `apps/web/app/api/v1/approvals/route.ts` with authentication and user ownership filters (satisfies AC-7).
+- [x] Implement `POST /api/v1/approvals/[id]/decision` in `apps/web/app/api/v1/approvals/[id]/decision/route.ts` with atomic status update, ownership verification, and PayPal order capture (satisfies AC-5, AC-6).
 
-**Phase 4: Dashboard UI and review actions**
+### **Phase 4: Dashboard UI and review actions**
 
-- Create `apps/web/components/purchase/approval-card.tsx` to render pending approval details, trigger rule badges, and one click Approve or Reject buttons (satisfies AC-8).
-- Integrate pending approvals section into `/dashboard` with optimistic status update and live refresh (satisfies AC-8).
+- [x] Create `apps/web/components/purchase/approval-card.tsx` to render pending approval details, trigger rule badges, and one click Approve or Reject buttons (satisfies AC-8).
+- [x] Integrate pending approvals section into `/dashboard` with optimistic status update and live refresh (satisfies AC-8).
 
 ## Consequences
 

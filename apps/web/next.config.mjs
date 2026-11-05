@@ -15,9 +15,7 @@ const nextConfig = {
   output: 'standalone',
   async rewrites() {
     const rawApiTarget =
-      process.env.API_INTERNAL_URL ||
-      process.env.NEXT_PUBLIC_API_URL ||
-      (process.env.NODE_ENV === 'production' ? null : 'http://localhost:4000');
+      process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL;
 
     if (!rawApiTarget) {
       return [];
@@ -25,12 +23,14 @@ const nextConfig = {
 
     const apiTarget = normalizeApiBaseUrl(rawApiTarget);
 
-    return [
-      {
-        source: '/api/v1/:path*',
-        destination: `${apiTarget}/api/:path*`,
-      },
-    ];
+    return {
+      fallback: [
+        {
+          source: '/api/v1/:path*',
+          destination: `${apiTarget}/api/:path*`,
+        },
+      ],
+    };
   },
 };
 

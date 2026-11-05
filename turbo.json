@@ -14,7 +14,8 @@
         "PAYPAL_CLIENT_ID",
         "PAYPAL_CLIENT_SECRET",
         "PAYPAL_ENVIRONMENT",
-        "PAYPAL_SIMULATION"
+        "PAYPAL_SIMULATION",
+        "GOOGLE_GENERATIVE_AI_API_KEY"
       ]
     },
     "check-types": {
@@ -63,7 +64,8 @@
         "PAYPAL_CLIENT_ID",
         "PAYPAL_CLIENT_SECRET",
         "PAYPAL_ENVIRONMENT",
-        "PAYPAL_SIMULATION"
+        "PAYPAL_SIMULATION",
+        "GOOGLE_GENERATIVE_AI_API_KEY"
       ]
     },
     "lint:fix": {

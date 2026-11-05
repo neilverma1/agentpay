@@ -21,6 +21,7 @@
     "@hookform/resolvers": "catalog:web",
     "class-variance-authority": "catalog:web",
     "clsx": "catalog:web",
+    "cn": "catalog:web",
     "input-otp": "catalog:web",
     "lucide-react": "catalog:web",
     "next-themes": "catalog:web",
@@ -28,6 +29,7 @@
     "react": "catalog:core",
     "react-dom": "catalog:core",
     "react-hook-form": "catalog:web",
+    "shiki": "catalog:web",
     "tailwind-merge": "catalog:web",
     "tw-animate-css": "catalog:web",
     "zod": "catalog:core"

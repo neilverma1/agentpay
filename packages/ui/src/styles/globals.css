@@ -40,6 +40,33 @@
   --sidebar-accent-foreground: oklch(0.2 0.02 255);
   --sidebar-border: oklch(0.9 0.006 255);
   --sidebar-ring: oklch(0.4 0.05 240);
+
+  /* Financial Status Tokens (Light) */
+  --spend-approved: oklch(0.55 0.17 145);
+  --spend-approved-foreground: oklch(0.99 0 0);
+  --spend-approved-subtle: oklch(0.95 0.04 145);
+  --spend-approved-subtle-foreground: oklch(0.25 0.1 145);
+
+  --spend-pending: oklch(0.68 0.16 65);
+  --spend-pending-foreground: oklch(0.18 0.03 65);
+  --spend-pending-subtle: oklch(0.95 0.05 70);
+  --spend-pending-subtle-foreground: oklch(0.35 0.1 65);
+
+  --spend-blocked: oklch(0.58 0.22 25);
+  --spend-blocked-foreground: oklch(0.99 0 0);
+  --spend-blocked-subtle: oklch(0.95 0.04 25);
+  --spend-blocked-subtle-foreground: oklch(0.35 0.14 25);
+
+  --spend-captured: oklch(0.52 0.22 255);
+  --spend-captured-foreground: oklch(0.99 0 0);
+  --spend-captured-subtle: oklch(0.94 0.04 255);
+  --spend-captured-subtle-foreground: oklch(0.28 0.12 255);
+
+  --spend-paused: oklch(0.55 0.02 255);
+  --spend-paused-foreground: oklch(0.99 0 0);
+  --spend-paused-subtle: oklch(0.93 0.01 255);
+  --spend-paused-subtle-foreground: oklch(0.28 0.02 255);
+
   --font-sans: Inter, sans-serif;
   --font-serif: Merriweather, serif;
   --font-mono: JetBrains Mono, monospace;
@@ -92,6 +119,33 @@
   --sidebar-accent-foreground: oklch(0.985 0.002 255);
   --sidebar-border: oklch(0.22 0.01 255);
   --sidebar-ring: oklch(0.8 0.03 240);
+
+  /* Financial Status Tokens (Dark) */
+  --spend-approved: oklch(0.65 0.17 145);
+  --spend-approved-foreground: oklch(0.12 0.01 145);
+  --spend-approved-subtle: oklch(0.2 0.06 145);
+  --spend-approved-subtle-foreground: oklch(0.85 0.12 145);
+
+  --spend-pending: oklch(0.75 0.16 65);
+  --spend-pending-foreground: oklch(0.15 0.03 65);
+  --spend-pending-subtle: oklch(0.22 0.06 65);
+  --spend-pending-subtle-foreground: oklch(0.9 0.1 65);
+
+  --spend-blocked: oklch(0.65 0.22 25);
+  --spend-blocked-foreground: oklch(0.99 0 0);
+  --spend-blocked-subtle: oklch(0.22 0.07 25);
+  --spend-blocked-subtle-foreground: oklch(0.9 0.1 25);
+
+  --spend-captured: oklch(0.65 0.2 255);
+  --spend-captured-foreground: oklch(0.1 0.02 255);
+  --spend-captured-subtle: oklch(0.22 0.06 255);
+  --spend-captured-subtle-foreground: oklch(0.88 0.1 255);
+
+  --spend-paused: oklch(0.65 0.02 255);
+  --spend-paused-foreground: oklch(0.12 0.01 255);
+  --spend-paused-subtle: oklch(0.22 0.02 255);
+  --spend-paused-subtle-foreground: oklch(0.85 0.02 255);
+
   --font-sans: Inter, sans-serif;
   --font-serif: Merriweather, serif;
   --font-mono: JetBrains Mono, monospace;
@@ -140,6 +194,31 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
 
+  --color-spend-approved: var(--spend-approved);
+  --color-spend-approved-foreground: var(--spend-approved-foreground);
+  --color-spend-approved-subtle: var(--spend-approved-subtle);
+  --color-spend-approved-subtle-foreground: var(--spend-approved-subtle-foreground);
+
+  --color-spend-pending: var(--spend-pending);
+  --color-spend-pending-foreground: var(--spend-pending-foreground);
+  --color-spend-pending-subtle: var(--spend-pending-subtle);
+  --color-spend-pending-subtle-foreground: var(--spend-pending-subtle-foreground);
+
+  --color-spend-blocked: var(--spend-blocked);
+  --color-spend-blocked-foreground: var(--spend-blocked-foreground);
+  --color-spend-blocked-subtle: var(--spend-blocked-subtle);
+  --color-spend-blocked-subtle-foreground: var(--spend-blocked-subtle-foreground);
+
+  --color-spend-captured: var(--spend-captured);
+  --color-spend-captured-foreground: var(--spend-captured-foreground);
+  --color-spend-captured-subtle: var(--spend-captured-subtle);
+  --color-spend-captured-subtle-foreground: var(--spend-captured-subtle-foreground);
+
+  --color-spend-paused: var(--spend-paused);
+  --color-spend-paused-foreground: var(--spend-paused-foreground);
+  --color-spend-paused-subtle: var(--spend-paused-subtle);
+  --color-spend-paused-subtle-foreground: var(--spend-paused-subtle-foreground);
+
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
   --font-serif: var(--font-serif);
@@ -166,4 +245,8 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+@utility tabular-nums {
+  font-variant-numeric: tabular-nums;
 }

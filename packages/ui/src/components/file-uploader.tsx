@@ -1,7 +1,7 @@
 'use client';
 
 import { Button } from '@workspace/ui/components/button';
-import { cn } from '@workspace/ui/lib/utils';
+import { cn } from 'cn';
 import { AlertCircle, CheckCircle2, Loader2, UploadCloud, X } from 'lucide-react';
 import * as React from 'react';
 

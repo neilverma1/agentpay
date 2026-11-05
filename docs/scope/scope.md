@@ -8,16 +8,16 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 
 ## At a glance
 
-| #   | Feature                                    | Phase      | Status  |
-| --- | ------------------------------------------ | ---------- | ------- |
-| 1   | Stack and architecture                     | Foundation | done    |
-| 2   | Coding standards and tooling               | Foundation | planned |
-| 3   | Core data model                            | Foundation | planned |
-| 4   | Design system and UI foundation            | Foundation | planned |
-| 5   | Core purchase loop                         | Slice 1    | planned |
-| 6   | Spending guardrails and approval threshold | Slice 2    | planned |
-| 7   | Real time audit telemetry grid             | Slice 3    | planned |
-| 8   | Webhook verification and state sync        | Slice 4    | planned |
+| #   | Feature                                    | Phase      | Status      |
+| --- | ------------------------------------------ | ---------- | ----------- |
+| 1   | Stack and architecture                     | Foundation | done        |
+| 2   | Coding standards and tooling               | Foundation | in-progress |
+| 3   | Core data model                            | Foundation | planned     |
+| 4   | Design system and UI foundation            | Foundation | planned     |
+| 5   | Core purchase loop                         | Slice 1    | planned     |
+| 6   | Spending guardrails and approval threshold | Slice 2    | planned     |
+| 7   | Real time audit telemetry grid             | Slice 3    | planned     |
+| 8   | Webhook verification and state sync        | Slice 4    | planned     |
 
 ## Foundations
 
@@ -34,7 +34,7 @@ spec [0001](../specs/0001-stack-and-architecture.md) · code in [apps/web/](../.
 
 Capture conventions, then install lint, format, and check scripts from the real scaffolded project. **Done when:** root `AGENTS.md` reflects the real stack, and lint and format checks run clean.
 
-- [ ] Capture conventions and tooling choices: `/audit`
+- [x] Capture conventions and tooling choices: `/audit`
 - [ ] Install the tooling: `/develop tooling`
 
 ### 3. Core data model · needs a decision

@@ -7,7 +7,15 @@
       "dependsOn": ["db:generate", "^build"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
       "outputs": [".next/**", "!.next/cache/**", "dist/**", "generated/**/*"],
-      "env": ["DATABASE_URL", "API_INTERNAL_URL", "NEXT_PUBLIC_API_URL"]
+      "env": [
+        "DATABASE_URL",
+        "API_INTERNAL_URL",
+        "NEXT_PUBLIC_API_URL",
+        "PAYPAL_CLIENT_ID",
+        "PAYPAL_CLIENT_SECRET",
+        "PAYPAL_ENVIRONMENT",
+        "PAYPAL_SIMULATION"
+      ]
     },
     "check-types": {
       "dependsOn": ["db:generate", "^build"]
@@ -51,7 +59,11 @@
         "S3_SECRET_ACCESS_KEY",
         "S3_ENDPOINT",
         "S3_PUBLIC_URL",
-        "S3_FORCE_PATH_STYLE"
+        "S3_FORCE_PATH_STYLE",
+        "PAYPAL_CLIENT_ID",
+        "PAYPAL_CLIENT_SECRET",
+        "PAYPAL_ENVIRONMENT",
+        "PAYPAL_SIMULATION"
       ]
     },
     "lint:fix": {

@@ -17,7 +17,9 @@
   },
   "prettier": "@workspace/prettier-config",
   "dependencies": {
+    "@ai-sdk/google": "catalog:core",
     "@hookform/resolvers": "catalog:web",
+    "@paypal/paypal-server-sdk": "catalog:core",
     "@t3-oss/env-nextjs": "catalog:core",
     "@tanstack/react-query": "catalog:web",
     "@types/qrcode": "catalog:web",
@@ -27,6 +29,7 @@
     "@workspace/storage": "workspace:*",
     "@workspace/ui": "workspace:*",
     "@workspace/utils": "workspace:*",
+    "ai": "catalog:core",
     "drizzle-orm": "catalog:core",
     "lucide-react": "catalog:web",
     "next": "catalog:web",

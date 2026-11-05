@@ -1,32 +1,26 @@
-# Verification Plan: 0004. Core purchase loop
+# Verify: Core purchase loop · spec 0004 · updated 2026-11-05
 
-This plan guides verification of the core purchase loop using automated tests and manual walkthroughs against PayPal Sandbox.
+_Steps derived from spec 0004 acceptance criteria. `/check verify` runs these; `/test` locks the durable ones._
 
-## Automated verification
+## UI / manual
 
-1. Unit tests for PayPal client and order formatting:
-   - Verify amount formatting converts cents to currency string with two decimals (for example, 1500 to "15.00").
-   - Verify order payload includes custom_id matching purchase intent identifier.
-2. Integration tests for route handler `POST /api/v1/agent/purchase`:
-   - Unauthenticated requests return HTTP 401.
-   - Requests targeting non existent or unauthorized agents return HTTP 404 or HTTP 403.
-   - Duplicate idempotency key returns existing record without creating duplicate transactions.
-   - Mocked PayPal capture failure returns HTTP 422 with structured failure payload.
+- [ ] Open dashboard at `/dashboard` with an active session → locate prompt bar → submit "Buy cloud compute credits for 10 dollars" → observe processing spinner and agent steps → expect live summary card with PayPal capture identifier and captured badge → AC-7
+- [ ] Submit duplicate purchase prompt with identical idempotency key → expect instant retrieval of existing transaction record without duplicate order creation → AC-1, AC-5
+- [ ] Click copy button beside PayPal Capture ID → expect identifier copied to clipboard with checkmark indicator → AC-7
+- [ ] Inspect reasoning trace accordion on summary card → verify three sequential steps (parse intent, create PayPal order, capture PayPal order) with timestamps → AC-2, AC-5
 
-## Manual walkthrough
+## Commands
 
-1. Prerequisites:
-   - Ensure `PAYPAL_CLIENT_ID` and `PAYPAL_CLIENT_SECRET` are present in `.env.local`.
-   - Ensure database migrations are applied and the local server is running.
-2. Step 1: Submit purchase prompt:
-   - Open the web dashboard and locate the purchase prompt bar.
-   - Enter prompt: "Buy cloud compute credits for 10 dollars".
-   - Click the execute purchase button.
-3. Step 2: Observe agent reasoning:
-   - Confirm that the UI reflects processing state.
-   - Verify that reasoning logs display parsed merchant details and estimated price.
-4. Step 3: Verify PayPal sandbox transaction:
-   - Confirm that the UI renders the completed transaction summary card with a valid PayPal capture identifier.
-   - Check the PayPal Developer Dashboard for the sandbox merchant account to confirm the captured order appears with the matching amount.
-5. Step 4: Database verification:
-   - Inspect the `purchase_intent` and `transaction` tables in PostgreSQL to verify consistent status ("completed"), matching identifiers, and complete reasoning log entries.
+- [ ] `pnpm --filter web test lib/paypal/service.test.ts components/purchase/purchase-bench.test.tsx` → all unit and component tests pass → AC-3, AC-4, AC-7
+- [ ] `pnpm check-types` → TypeScript compilation passes across all packages with zero errors → AC-1, AC-2, AC-3, AC-4, AC-5, AC-6, AC-7
+- [ ] `curl -X POST http://localhost:3000/api/v1/agent/purchase -H "Content-Type: application/json" -d "{}"` → returns HTTP 401 Unauthorized → AC-1
+
+## Acceptance criteria coverage
+
+- AC-1: Input schema validation, session authentication, and idempotency key enforcement → covered by route handler and command curl test
+- AC-2: Buyer agent prompt parsing and tool calling with fallback sandbox defaults → covered by agent purchase service and UI manual walkthrough
+- AC-3: PayPal server SDK client singleton and Sandbox environment configuration → covered by apps/web/lib/paypal/client.ts and unit tests
+- AC-4: PayPal Orders v2 create order with intent CAPTURE and immediate ordersCapture call → covered by apps/web/lib/paypal/service.ts
+- AC-5: PostgreSQL persistence for purchase intent and transaction with structured reasoning logs → covered by Drizzle schema operations in apps/web/lib/agent/purchase.ts
+- AC-6: External API timeout protection and structured error handling returning HTTP 422 on failure → covered by PayPal service error mapping in route handler
+- AC-7: Interactive dashboard prompt bar and live transaction summary card with financial status badges → covered by PurchaseBench component and component test

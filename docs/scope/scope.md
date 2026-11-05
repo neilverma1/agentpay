@@ -8,16 +8,16 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 
 ## At a glance
 
-| #   | Feature                                    | Phase      | Status      |
-| --- | ------------------------------------------ | ---------- | ----------- |
-| 1   | Stack and architecture                     | Foundation | done        |
-| 2   | Coding standards and tooling               | Foundation | done        |
-| 3   | Core data model                            | Foundation | done        |
-| 4   | Design system and UI foundation            | Foundation | done        |
-| 5   | Core purchase loop                         | Slice 1    | in-progress |
-| 6   | Spending guardrails and approval threshold | Slice 2    | planned     |
-| 7   | Real time audit telemetry grid             | Slice 3    | planned     |
-| 8   | Webhook verification and state sync        | Slice 4    | planned     |
+| #   | Feature                                    | Phase      | Status  |
+| --- | ------------------------------------------ | ---------- | ------- |
+| 1   | Stack and architecture                     | Foundation | done    |
+| 2   | Coding standards and tooling               | Foundation | done    |
+| 3   | Core data model                            | Foundation | done    |
+| 4   | Design system and UI foundation            | Foundation | done    |
+| 5   | Core purchase loop                         | Slice 1    | done    |
+| 6   | Spending guardrails and approval threshold | Slice 2    | planned |
+| 7   | Real time audit telemetry grid             | Slice 3    | planned |
+| 8   | Webhook verification and state sync        | Slice 4    | planned |
 
 ## Foundations
 
@@ -66,19 +66,19 @@ spec [0003](../specs/0003-design-system-and-ui-foundation/index.md) · code in [
 
 ## Slice 1: Core purchase loop
 
-### 5. Core purchase loop · in-progress
+### 5. Core purchase loop
 
 The thinnest real thread through the whole system. The buyer agent receives an intent to purchase a digital asset, creates a PayPal order in sandbox via the Orders API, captures payment, and returns confirmed transaction data to the user interface. **Done when:** a prompt creates and captures a real sandbox order through PayPal and renders the confirmed payment identifier on screen.
 
 spec [0004](../specs/0004-core-purchase-loop/index.md) · code in [apps/web/](../../apps/web/)
 
 - [x] Design it (spec): `/architect core purchase loop`
-- [ ] Build it: `/develop core purchase loop`
-  - [ ] PayPal SDK client singleton and sandbox configuration (AC-3)
-  - [ ] Backend PayPal order creation and immediate capture service (AC-4, AC-6)
-  - [ ] Agent commerce service with AI SDK tool calling and Drizzle persistence (AC-2, AC-5)
-  - [ ] Purchase route handler with Better Auth session validation (AC-1, AC-6)
-  - [ ] Dashboard prompt bar and live transaction summary card UI (AC-7)
+- [x] Build it: `/develop core purchase loop`
+  - [x] PayPal SDK client singleton and sandbox configuration (AC-3)
+  - [x] Backend PayPal order creation and immediate capture service (AC-4, AC-6)
+  - [x] Agent commerce service with AI SDK tool calling and Drizzle persistence (AC-2, AC-5)
+  - [x] Purchase route handler with Better Auth session validation (AC-1, AC-6)
+  - [x] Dashboard prompt bar and live transaction summary card UI (AC-7)
 
 ## Slice 2: Spending guardrails and approval threshold
 

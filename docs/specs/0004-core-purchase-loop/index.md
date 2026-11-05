@@ -1,7 +1,7 @@
 # 0004. Core purchase loop
 
 **Date**: 2026-11-05
-**Status**: Proposed
+**Status**: Accepted
 
 ## Summary
 
@@ -136,11 +136,11 @@ Reuses existing schema from `packages/db` without migrations:
 
 Following the Tracer Bullet build approach, tasks stand up a thin end to end thread through every layer first, then complete UI presentation:
 
-1. Configure PayPal SDK client singleton in `apps/web/lib/paypal/client.ts` with environment variable validation, satisfies **AC-3**
-2. Implement backend PayPal purchase service functions for `createOrder` and `captureOrder` with error handling and integer cents conversion, satisfies **AC-4**, **AC-6**
-3. Create agent commerce service in `apps/web/lib/agent/purchase.ts` integrating Vercel AI SDK tool calling, reasoning step assembly, and Drizzle database persistence, satisfies **AC-2**, **AC-5**
-4. Implement route handler `POST /api/v1/agent/purchase` with Zod validation, session auth verification, and error response formatting, satisfies **AC-1**, **AC-6**
-5. Build interactive prompt bar and live transaction summary card in `apps/web/components/purchase/` using financial badges and trace components from `packages/ui`, satisfies **AC-7**
+1. [x] Configure PayPal SDK client singleton in `apps/web/lib/paypal/client.ts` with environment variable validation, satisfies **AC-3**
+2. [x] Implement backend PayPal purchase service functions for `createOrder` and `captureOrder` with error handling and integer cents conversion, satisfies **AC-4**, **AC-6**
+3. [x] Create agent commerce service in `apps/web/lib/agent/purchase.ts` integrating Vercel AI SDK tool calling, reasoning step assembly, and Drizzle database persistence, satisfies **AC-2**, **AC-5**
+4. [x] Implement route handler `POST /api/v1/agent/purchase` with Zod validation, session auth verification, and error response formatting, satisfies **AC-1**, **AC-6**
+5. [x] Build interactive prompt bar and live transaction summary card in `apps/web/components/purchase/` using financial badges and trace components from `packages/ui`, satisfies **AC-7**
 
 ## Consequences
 

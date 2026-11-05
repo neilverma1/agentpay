@@ -8,16 +8,16 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 
 ## At a glance
 
-| #   | Feature                                    | Phase      | Status      |
-| --- | ------------------------------------------ | ---------- | ----------- |
-| 1   | Stack and architecture                     | Foundation | done        |
-| 2   | Coding standards and tooling               | Foundation | done        |
-| 3   | Core data model                            | Foundation | done        |
-| 4   | Design system and UI foundation            | Foundation | in-progress |
-| 5   | Core purchase loop                         | Slice 1    | planned     |
-| 6   | Spending guardrails and approval threshold | Slice 2    | planned     |
-| 7   | Real time audit telemetry grid             | Slice 3    | planned     |
-| 8   | Webhook verification and state sync        | Slice 4    | planned     |
+| #   | Feature                                    | Phase      | Status  |
+| --- | ------------------------------------------ | ---------- | ------- |
+| 1   | Stack and architecture                     | Foundation | done    |
+| 2   | Coding standards and tooling               | Foundation | done    |
+| 3   | Core data model                            | Foundation | done    |
+| 4   | Design system and UI foundation            | Foundation | done    |
+| 5   | Core purchase loop                         | Slice 1    | planned |
+| 6   | Spending guardrails and approval threshold | Slice 2    | planned |
+| 7   | Real time audit telemetry grid             | Slice 3    | planned |
+| 8   | Webhook verification and state sync        | Slice 4    | planned |
 
 ## Foundations
 

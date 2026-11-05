@@ -15,6 +15,7 @@
     "format": "prettier --write .",
     "format:path": "prettier --write",
     "format:check": "prettier --check .",
+    "check": "pnpm format:check && pnpm check-types && pnpm lint && pnpm test",
     "check-types": "turbo check-types",
     "start": "turbo start",
     "test": "turbo test",

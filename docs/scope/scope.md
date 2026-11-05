@@ -8,16 +8,16 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 
 ## At a glance
 
-| #   | Feature                                    | Phase      | Status      |
-| --- | ------------------------------------------ | ---------- | ----------- |
-| 1   | Stack and architecture                     | Foundation | done        |
-| 2   | Coding standards and tooling               | Foundation | done        |
-| 3   | Core data model                            | Foundation | in-progress |
-| 4   | Design system and UI foundation            | Foundation | planned     |
-| 5   | Core purchase loop                         | Slice 1    | planned     |
-| 6   | Spending guardrails and approval threshold | Slice 2    | planned     |
-| 7   | Real time audit telemetry grid             | Slice 3    | planned     |
-| 8   | Webhook verification and state sync        | Slice 4    | planned     |
+| #   | Feature                                    | Phase      | Status  |
+| --- | ------------------------------------------ | ---------- | ------- |
+| 1   | Stack and architecture                     | Foundation | done    |
+| 2   | Coding standards and tooling               | Foundation | done    |
+| 3   | Core data model                            | Foundation | done    |
+| 4   | Design system and UI foundation            | Foundation | planned |
+| 5   | Core purchase loop                         | Slice 1    | planned |
+| 6   | Spending guardrails and approval threshold | Slice 2    | planned |
+| 7   | Real time audit telemetry grid             | Slice 3    | planned |
+| 8   | Webhook verification and state sync        | Slice 4    | planned |
 
 ## Foundations
 
@@ -41,14 +41,14 @@ Capture conventions, then install lint, format, and check scripts from the real 
 
 Define core persistence entities for agents, budget policies, purchase intents, and transaction records. **Done when:** entities and relationships support guardrail checks, transaction tracking, and audit logs without breaking changes.
 
-spec [0002](../specs/0002-core-data-model.md) · code in [packages/db/](../../packages/db/)
+spec [0002](../specs/0002-core-data-model/index.md) · code in [packages/db/](../../packages/db/)
 
 - [x] Design it (spec): `/architect core data model`
-- [ ] Build it: `/develop core data model`
-  - [ ] Schema tables for agents, policies, and commerce entities (AC-1, AC-2, AC-3, AC-4, AC-5, AC-6)
-  - [ ] Relational links and foreign keys to user table (AC-1, AC-3, AC-6)
-  - [ ] Zod validation schemas and TypeScript type exports (AC-7)
-  - [ ] Drizzle migration generation and build verification (AC-1, AC-2)
+- [x] Build it: `/develop core data model`
+  - [x] Schema tables for agents, policies, and commerce entities (AC-1, AC-2, AC-3, AC-4, AC-5, AC-6)
+  - [x] Relational links and foreign keys to user table (AC-1, AC-3, AC-6)
+  - [x] Zod validation schemas and TypeScript type exports (AC-7)
+  - [x] Drizzle migration generation and build verification (AC-1, AC-2)
 
 ### 4. Design system and UI foundation · needs a decision
 

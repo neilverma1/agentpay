@@ -1,25 +1,11 @@
 # 0002. Core data model
 
 **Date**: 2026-11-05
-**Status**: Proposed
+**Status**: Accepted
 
 ## Summary
 
 This specification establishes the core persistence schema for AgentPay in the shared database package. It defines relational tables for autonomous agents, spending policies, purchase intents, approval requests, and financial transactions using Drizzle ORM on PostgreSQL. Storing monetary values as integer cents and tracking spending via ledger queries prevents rounding errors and ensures reliable budget enforcement before payment execution.
-
-## Context
-
-AgentPay coordinates autonomous software agents that execute purchases using PayPal on behalf of human operators. To ensure financial safety, agents must never operate with unchecked authority. The persistence architecture must support strict spending boundaries, category restrictions, and conditional pauses for human review while maintaining an immutable audit history for every action taken.
-
-Several technical forces shape this design:
-
-First, currency representation must be exact. Floating point calculations in financial systems introduce subtle precision bugs over time. Storing values as integer cents (one dollar equals 100 cents) provides arithmetic safety across all budget calculations, threshold comparisons, and PayPal order captures.
-
-Second, agent autonomy requires deterministic guardrails. Each agent needs configurable spending rules, including daily transaction ceilings, single purchase thresholds that trigger manual approval, and category allowlists or blocklists. Because spending limits apply over rolling daily intervals, the data layer must provide verifiable ledger sums rather than relying on mutable counters that drift out of sync after partial failures.
-
-Third, state transitions across agent reasoning, user approvals, and payment provider execution must be traceable. If PayPal rejects an order, a network call times out, or a user denies a purchase, the system must retain the purchase intent, the agent reasoning log, and the corresponding state change.
-
-Fourth, database schemas reside in the shared database package (`packages/db`) and must integrate cleanly with the existing user table from Better Auth. Monorepo applications, including the Next.js web application and background agent workers, depend on type safe Drizzle schemas and Zod validation parsers exported from this single package.
 
 ## Requirements
 
@@ -40,55 +26,6 @@ Fourth, database schemas reside in the shared database package (`packages/db`) a
 - **AC-6**: Transactions store unique PayPal order and capture identifiers, actual captured amounts, raw provider response payloads, and capture timestamps while preventing cascade deletion when agents are removed.
 - **AC-7**: All entity statuses are typed using TypeScript string const unions and validated via exported Zod schemas.
 
-## Options considered
-
-### Option 1: Relational PostgreSQL tables with Drizzle ORM, UUID identifiers, integer cents, and JSONB policy arrays
-
-A normalized relational schema in `packages/db` with five dedicated tables. Primary keys use PostgreSQL random UUID identifiers. Monetary values are stored as integer cents. Core threshold limits reside in dedicated integer columns, while merchant category allowlists, blocklists, and agent reasoning traces use JSONB columns. Status fields use text columns constrained by TypeScript string unions and Zod schemas.
-
-**Pros**:
-
-- Full relational integrity with foreign keys guarantees orphan records cannot exist.
-- Integer cents eliminate floating point rounding errors during policy calculations and ledger summaries.
-- JSONB columns provide flexibility for complex reasoning steps and category filters without extra join overhead.
-- Text status columns with TypeScript unions avoid PostgreSQL enum migration locks when introducing new lifecycle states.
-- UUID identifiers provide collision free IDs across distributed client and server operations.
-
-**Cons**:
-
-- Integer cents require unit conversion to decimal strings when calling PayPal APIs.
-- Rolling daily limit checks require dynamic SQL aggregation queries over recent transactions.
-
-### Option 2: Document style JSON state per agent with embedded policies and transaction logs
-
-Store an agent record with an embedded JSON document holding its policies, active intents, and historical transaction log.
-
-**Pros**:
-
-- Single table query returns all agent context in one read operation.
-- Easy to add arbitrary metadata without schema migrations.
-
-**Cons**:
-
-- Concurrency conflicts occur when multiple transactions or approvals modify the agent document simultaneously.
-- Summing daily expenditures across all agents requires expensive table scans or unindexed JSON unnesting.
-- Violates first normal form and compromises financial audit guarantees.
-
-### Option 3: Prisma ORM with native PostgreSQL enums and numeric decimal columns
-
-Retain Prisma schemas with native PostgreSQL enum types for lifecycle statuses and `numeric(12, 2)` columns for financial values.
-
-**Pros**:
-
-- Database engine strictly enforces enum values directly at the SQL layer.
-- Decimal values match decimal input strings without integer multiplication.
-
-**Cons**:
-
-- Prisma query engine adds binary overhead and slower cold starts compared to Drizzle ORM.
-- Altering native PostgreSQL enums in production migrations requires manual SQL scripts or downtime.
-- Floating decimals remain prone to precision mismatches across different JavaScript runtime libraries.
-
 ## Decision
 
 **Chosen option**: Option 1: Relational PostgreSQL tables with Drizzle ORM, UUID identifiers, integer cents, and JSONB policy arrays.
@@ -99,9 +36,7 @@ We will implement the core data model in `packages/db` across five new relationa
 
 ## Rationale
 
-Option 1 provides the exact balance of transactional safety, relational integrity, and developer agility needed for AgentPay. Integer cents prevent catastrophic rounding errors in financial transactions (basis: currency representation in financial systems). Using Drizzle ORM in `packages/db` maintains explicit SQL control and zero binary overhead (basis: project stack decision in spec 0001).
-
-Using text columns paired with exported TypeScript const arrays and Zod schemas allows future lifecycle states (such as dispute handling or partial captures) to be added without dangerous database migration locks (basis: schema evolution patterns). Storing reasoning traces and category rules as JSONB gives AI agent tools native flexibility while preserving strict relational foreign keys between agents, intents, approvals, and transactions (basis: hybrid relational and document patterns in PostgreSQL).
+Reasoning and options: see [rationale.md](rationale.md).
 
 ## Feature design
 
@@ -249,12 +184,12 @@ Exported from `packages/db`:
 
 Following the Tracer Bullet build approach, tasks are sliced to establish a working database persistence thread first, followed by schema exports and type validation.
 
-1. Create schema definition file `packages/db/src/schema/agent.ts` with tables `agent` and `agent_policy`, satisfies **AC-1**, **AC-2**, **AC-3**.
-2. Create schema definition file `packages/db/src/schema/commerce.ts` with tables `purchase_intent`, `approval_request`, and `transaction`, satisfies **AC-1**, **AC-2**, **AC-4**, **AC-5**, **AC-6**.
-3. Define table relations and foreign key constraints linking to the existing `user` table in `packages/db/src/schema/relations.ts`, satisfies **AC-1**, **AC-3**, **AC-6**.
-4. Generate and export Zod insert and select schemas alongside TypeScript inferred types in `packages/db/src/schema/validation.ts`, satisfies **AC-7**.
-5. Export all tables, relations, types, and schemas through `packages/db/src/schema/index.ts` and `packages/db/src/index.ts`, satisfies **AC-1**, **AC-7**.
-6. Run `pnpm --filter @workspace/db db:generate` to generate PostgreSQL migration SQL files and verify migration build cleanly, satisfies **AC-1**, **AC-2**.
+1. [x] Create schema definition file `packages/db/src/schema/agent.ts` with tables `agent` and `agent_policy`, satisfies **AC-1**, **AC-2**, **AC-3**.
+2. [x] Create schema definition file `packages/db/src/schema/commerce.ts` with tables `purchase_intent`, `approval_request`, and `transaction`, satisfies **AC-1**, **AC-2**, **AC-4**, **AC-5**, **AC-6**.
+3. [x] Define table relations and foreign key constraints linking to the existing `user` table in `packages/db/src/schema/relations.ts`, satisfies **AC-1**, **AC-3**, **AC-6**.
+4. [x] Generate and export Zod insert and select schemas alongside TypeScript inferred types in `packages/db/src/schema/validation.ts`, satisfies **AC-7**.
+5. [x] Export all tables, relations, types, and schemas through `packages/db/src/schema/index.ts` and `packages/db/src/index.ts`, satisfies **AC-1**, **AC-7**.
+6. [x] Run `pnpm --filter @workspace/db db:generate` to generate PostgreSQL migration SQL files and verify migration build cleanly, satisfies **AC-1**, **AC-2**.
 
 ## Consequences
 
@@ -276,20 +211,5 @@ Following the Tracer Bullet build approach, tasks are sliced to establish a work
 
 ## Follow-up
 
-- [ ] Execute `pnpm --filter @workspace/db db:generate` once schema implementation files are written in `/develop core data model`.
+- [x] Execute `pnpm --filter @workspace/db db:generate` once schema implementation files are written in `/develop core data model`.
 - [ ] Connect PostgreSQL MCP server for visual schema inspection during Slice 1.
-
-## References
-
-**Project sources**:
-
-- `AGENTS.md`: Stack definitions and Tracer Bullet build rules.
-- `docs/specs/0001-stack-and-architecture.md`: Turborepo monorepo with Drizzle ORM and PostgreSQL.
-- `docs/scope/scope.md`: Feature 3 acceptance goals and feature roadmap.
-- `packages/db/src/schema/auth.ts`: Better Auth user table schema.
-
-**Practices & standards**:
-
-- Integer currency representation for financial arithmetic safety.
-- Idempotency keys for payment and state transition operations.
-- Application layer tenant scoping for secure multi user access.

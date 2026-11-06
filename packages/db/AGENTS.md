@@ -6,11 +6,13 @@ Persistence package containing the PostgreSQL connection pool, Drizzle ORM schem
 
 ## Key files
 
-| File                 | Owns                                                                  |
-| -------------------- | --------------------------------------------------------------------- |
-| `src/schema/auth.ts` | Better Auth tables (user, session, account, verification, two_factor) |
-| `src/client.ts`      | Node pg Pool and Drizzle client instance                              |
-| `drizzle.config.ts`  | Drizzle Kit migration configuration                                   |
+| File                     | Owns                                                                      |
+| ------------------------ | ------------------------------------------------------------------------- |
+| `src/schema/auth.ts`     | Better Auth tables (user, session, account, verification, two_factor)     |
+| `src/schema/agent.ts`    | Agent entities and audit log tables                                       |
+| `src/schema/commerce.ts` | Commerce entities (purchase intent, transaction, approval, webhook event) |
+| `src/client.ts`          | Node pg Pool and Drizzle client instance                                  |
+| `drizzle.config.ts`      | Drizzle Kit migration configuration                                       |
 
 ## Commands
 
@@ -34,5 +36,8 @@ pnpm --filter @workspace/db studio
 ## Related specs
 
 - [0001-stack-and-architecture](../../docs/specs/0001-stack-and-architecture.md)
+- [0002-core-data-model](../../docs/specs/0002-core-data-model/index.md)
+- [0006-real-time-audit-telemetry-grid](../../docs/specs/0006-real-time-audit-telemetry-grid/index.md)
+- [0007-webhook-verification-and-state-sync](../../docs/specs/0007-webhook-verification-and-state-sync/index.md)
 
 _Drafted by /audit from the repo, worth a quick human pass. Edit freely: once a line stops matching this draft, later runs treat it as curated and will flag rather than overwrite it._

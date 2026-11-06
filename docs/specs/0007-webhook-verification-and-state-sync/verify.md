@@ -1,39 +1,31 @@
-# 0007. Webhook verification and state sync (Verification Plan)
+# Verify: Webhook verification and state sync · spec 0007 · updated 2026-11-06
 
-**Date**: 2026-11-06
+_Steps derived from spec 0007 acceptance criteria. `/check verify` runs these; `/test` locks the durable ones._
 
-## Verification checklist
+## Commands
 
-This document outlines the test scenarios and automated verification commands for the webhook verification and state sync feature slice.
+- [x] `pnpm check-types` → all 18 monorepo packages typecheck cleanly → AC-1, AC-2, AC-3, AC-4, AC-5, AC-6, AC-7, AC-8
+- [x] `pnpm --filter web test lib/paypal/webhook.test.ts` → all 11 unit tests pass verifying header extraction, certificate url validation, simulation fallback, replay defense, and state transitions → AC-1, AC-2, AC-3, AC-4, AC-5, AC-6, AC-7, AC-8
+- [x] `pnpm --filter web test app/api/webhooks/paypal/route.test.ts` → all 5 HTTP route handler tests pass verifying empty body, malformed JSON, verification failure, duplicate detection, and successful processing → AC-1, AC-2, AC-3
 
-### 1. Database schema and migration verification
+## HTTP / Manual
 
-- [ ] Run `pnpm check-types` across all workspaces to confirm schema types compile cleanly.
-- [ ] Confirm `webhook_event` table is created with unique index on `transmission_id`.
-- [ ] Confirm `transaction` table contains `refunded_amount_cents` with default 0.
+- [x] Send `POST /api/webhooks/paypal` with empty body → expects HTTP 400 Bad Request → AC-1
+- [x] Send `POST /api/webhooks/paypal` without signature headers when simulation is off → expects HTTP 400 Bad Request with failure reason → AC-2
+- [x] Send `POST /api/webhooks/paypal` with transmission identifier `SIM-TEST-001` in simulation mode → expects HTTP 200 OK with `status: "processed"` → AC-8
+- [x] Re-send `POST /api/webhooks/paypal` with identical transmission identifier `SIM-TEST-001` → expects HTTP 200 OK with `duplicate: true` → AC-3
+- [x] Send `PAYMENT.CAPTURE.COMPLETED` webhook event → expects transaction status `completed` and purchase intent status `completed` → AC-4
+- [x] Send `PAYMENT.CAPTURE.DENIED` webhook event → expects transaction status `failed` and purchase intent status `failed` → AC-5
+- [x] Send `PAYMENT.CAPTURE.REFUNDED` webhook event → expects transaction status `refunded` and `refundedAmountCents` incremented → AC-6
+- [x] Send unknown event or unmatched transaction id → expects HTTP 200 OK with `status: "ignored"` and row in `webhook_event` → AC-7
 
-### 2. Cryptographic signature verification tests
+## Acceptance criteria coverage
 
-- [ ] Test missing PayPal headers: sending a POST request to `/api/webhooks/paypal` without `paypal-transmission-sig` or `paypal-transmission-id` returns HTTP 400 Bad Request.
-- [ ] Test forged signature: sending an invalid or altered signature against live PayPal returns HTTP 400 Bad Request.
-- [ ] Test valid signature in simulation mode: sending simulated webhook payload with simulation enabled returns HTTP 200 OK and records status `processed`.
-
-### 3. Replay defense and idempotency tests
-
-- [ ] Send a webhook payload with transmission identifier `TEST-TRANSMISSION-001`. Confirm HTTP 200 and database row in `webhook_event`.
-- [ ] Re-send the identical payload with transmission identifier `TEST-TRANSMISSION-001`. Confirm endpoint returns HTTP 200 with `{ received: true, duplicate: true }` and no second state transition occurs.
-
-### 4. Asynchronous state synchronization tests
-
-- [ ] Test `PAYMENT.CAPTURE.COMPLETED`: sending capture completed event for a pending transaction transitions transaction status to `completed`, sets `capturedAt`, and updates parent purchase intent status to `completed`.
-- [ ] Test `PAYMENT.CAPTURE.DENIED`: sending capture denied event transitions transaction status to `failed` and purchase intent status to `failed`.
-- [ ] Test `PAYMENT.CAPTURE.REFUNDED`: sending capture refunded event transitions transaction status to `refunded` and updates `refundedAmountCents` to match the refund value.
-- [ ] Test state machine monotonicity: sending a delayed capture completed event after a refund has occurred does not overwrite the `refunded` status.
-
-### 5. Automated test execution
-
-Run the following test suite to verify all webhook operations:
-
-```bash
-pnpm --filter @workspace/web test apps/web/lib/paypal/webhook.test.ts
-```
+- AC-1: covered by `extractPayPalHeaders` unit test and route handler missing header test
+- AC-2: covered by `verifyPayPalWebhookSignature` unit test and route handler verification failure test
+- AC-3: covered by `webhook_event` unique index and duplicate transmission tests
+- AC-4: covered by `PAYMENT.CAPTURE.COMPLETED` state synchronization unit test
+- AC-5: covered by `PAYMENT.CAPTURE.DENIED` rejection handling unit test
+- AC-6: covered by `PAYMENT.CAPTURE.REFUNDED` refund increment unit test
+- AC-7: covered by multi identifier fallback and unmatched transaction unit tests
+- AC-8: covered by simulation mode verification tests

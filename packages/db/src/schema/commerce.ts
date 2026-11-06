@@ -26,6 +26,9 @@ export const TRANSACTION_STATUSES = [
 ] as const;
 export type TransactionStatus = (typeof TRANSACTION_STATUSES)[number];
 
+export const WEBHOOK_EVENT_STATUSES = ['received', 'processed', 'ignored', 'failed'] as const;
+export type WebhookEventStatus = (typeof WEBHOOK_EVENT_STATUSES)[number];
+
 export const purchaseIntent = pgTable(
   'purchase_intent',
   {
@@ -109,6 +112,7 @@ export const transaction = pgTable(
     currency: text('currency').default('USD').notNull(),
     status: text('status').default('created').$type<TransactionStatus>().notNull(),
     paymentMethod: text('payment_method').default('paypal').notNull(),
+    refundedAmountCents: integer('refunded_amount_cents').default(0).notNull(),
     rawPaypalResponse: jsonb('raw_paypal_response').$type<Record<string, unknown>>(),
     capturedAt: timestamp('captured_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
@@ -127,3 +131,31 @@ export type ApprovalRequest = typeof approvalRequest.$inferSelect;
 export type NewApprovalRequest = typeof approvalRequest.$inferInsert;
 export type Transaction = typeof transaction.$inferSelect;
 export type NewTransaction = typeof transaction.$inferInsert;
+
+export const webhookEvent = pgTable(
+  'webhook_event',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    paypalWebhookId: text('paypal_webhook_id'),
+    transmissionId: text('transmission_id').notNull().unique(),
+    eventType: text('event_type').notNull(),
+    resourceType: text('resource_type').notNull(),
+    summary: text('summary'),
+    status: text('status').default('received').$type<WebhookEventStatus>().notNull(),
+    rawHeaders: jsonb('raw_headers').$type<Record<string, unknown>>().default({}).notNull(),
+    payload: jsonb('payload').$type<Record<string, unknown>>().default({}).notNull(),
+    errorMessage: text('error_message'),
+    processedAt: timestamp('processed_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index('webhook_event_transmission_id_idx').on(table.transmissionId),
+    index('webhook_event_event_type_idx').on(table.eventType),
+    index('webhook_event_status_idx').on(table.status),
+    index('webhook_event_created_at_idx').on(table.createdAt),
+  ],
+);
+
+export type WebhookEvent = typeof webhookEvent.$inferSelect;
+export type NewWebhookEvent = typeof webhookEvent.$inferInsert;

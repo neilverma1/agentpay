@@ -1,7 +1,7 @@
 # 0007. Webhook verification and state sync
 
 **Date**: 2026-11-06
-**Status**: Proposed
+**Status**: Accepted
 
 ## Summary
 

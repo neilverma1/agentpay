@@ -4,6 +4,7 @@ import {
   APPROVAL_REQUEST_STATUSES,
   PURCHASE_INTENT_STATUSES,
   TRANSACTION_STATUSES,
+  WEBHOOK_EVENT_STATUSES,
 } from './commerce';
 
 export const agentStatusSchema = z.enum(AGENT_STATUSES);
@@ -11,6 +12,7 @@ export const agentAuditActionSchema = z.enum(AGENT_AUDIT_ACTIONS);
 export const purchaseIntentStatusSchema = z.enum(PURCHASE_INTENT_STATUSES);
 export const approvalRequestStatusSchema = z.enum(APPROVAL_REQUEST_STATUSES);
 export const transactionStatusSchema = z.enum(TRANSACTION_STATUSES);
+export const webhookEventStatusSchema = z.enum(WEBHOOK_EVENT_STATUSES);
 
 export const insertAgentSchema = z.object({
   userId: z.string().min(1, 'User identifier is required'),
@@ -141,6 +143,7 @@ export const insertTransactionSchema = z.object({
   currency: z.string().length(3).default('USD'),
   status: transactionStatusSchema.default('created'),
   paymentMethod: z.string().default('paypal'),
+  refundedAmountCents: z.number().int().nonnegative().default(0),
   rawPaypalResponse: z.record(z.string(), z.unknown()).optional().nullable(),
   capturedAt: z.date().optional().nullable(),
 });
@@ -156,6 +159,7 @@ export const selectTransactionSchema = z.object({
   currency: z.string(),
   status: transactionStatusSchema,
   paymentMethod: z.string(),
+  refundedAmountCents: z.number().int(),
   rawPaypalResponse: z.record(z.string(), z.unknown()).nullable(),
   capturedAt: z.date().nullable(),
   createdAt: z.date(),
@@ -195,3 +199,35 @@ export const selectAgentAuditLogSchema = z.object({
 
 export type InsertAgentAuditLogInput = z.infer<typeof insertAgentAuditLogSchema>;
 export type SelectAgentAuditLogOutput = z.infer<typeof selectAgentAuditLogSchema>;
+
+export const insertWebhookEventSchema = z.object({
+  paypalWebhookId: z.string().max(255).optional().nullable(),
+  transmissionId: z.string().min(1, 'Transmission identifier is required'),
+  eventType: z.string().min(1, 'Event type is required'),
+  resourceType: z.string().min(1, 'Resource type is required'),
+  summary: z.string().optional().nullable(),
+  status: webhookEventStatusSchema.default('received'),
+  rawHeaders: z.record(z.string(), z.unknown()).default({}),
+  payload: z.record(z.string(), z.unknown()).default({}),
+  errorMessage: z.string().optional().nullable(),
+  processedAt: z.date().optional().nullable(),
+});
+
+export const selectWebhookEventSchema = z.object({
+  id: z.uuid(),
+  paypalWebhookId: z.string().nullable(),
+  transmissionId: z.string(),
+  eventType: z.string(),
+  resourceType: z.string(),
+  summary: z.string().nullable(),
+  status: webhookEventStatusSchema,
+  rawHeaders: z.record(z.string(), z.unknown()),
+  payload: z.record(z.string(), z.unknown()),
+  errorMessage: z.string().nullable(),
+  processedAt: z.date().nullable(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+
+export type InsertWebhookEventInput = z.infer<typeof insertWebhookEventSchema>;
+export type SelectWebhookEventOutput = z.infer<typeof selectWebhookEventSchema>;

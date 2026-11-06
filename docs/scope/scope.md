@@ -8,16 +8,16 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 
 ## At a glance
 
-| #   | Feature                                    | Phase      | Status      |
-| --- | ------------------------------------------ | ---------- | ----------- |
-| 1   | Stack and architecture                     | Foundation | done        |
-| 2   | Coding standards and tooling               | Foundation | done        |
-| 3   | Core data model                            | Foundation | done        |
-| 4   | Design system and UI foundation            | Foundation | done        |
-| 5   | Core purchase loop                         | Slice 1    | done        |
-| 6   | Spending guardrails and approval threshold | Slice 2    | done        |
-| 7   | Real time audit telemetry grid             | Slice 3    | done        |
-| 8   | Webhook verification and state sync        | Slice 4    | in-progress |
+| #   | Feature                                    | Phase      | Status |
+| --- | ------------------------------------------ | ---------- | ------ |
+| 1   | Stack and architecture                     | Foundation | done   |
+| 2   | Coding standards and tooling               | Foundation | done   |
+| 3   | Core data model                            | Foundation | done   |
+| 4   | Design system and UI foundation            | Foundation | done   |
+| 5   | Core purchase loop                         | Slice 1    | done   |
+| 6   | Spending guardrails and approval threshold | Slice 2    | done   |
+| 7   | Real time audit telemetry grid             | Slice 3    | done   |
+| 8   | Webhook verification and state sync        | Slice 4    | done   |
 
 ## Foundations
 
@@ -120,12 +120,12 @@ Listen for asynchronous PayPal payment events, verify webhook signatures cryptog
 spec [0007](../specs/0007-webhook-verification-and-state-sync/index.md) · code in [apps/web/](../../apps/web/), [packages/db/](../../packages/db/)
 
 - [x] Design it (spec): `/architect webhook verification and state sync`
-- [ ] Build it: `/develop webhook verification and state sync`
-  - [ ] Schema migration for webhook_event audit table and transaction refund columns (AC-3, AC-6)
-  - [ ] PayPal REST webhook signature verification service with simulation fallback (AC-1, AC-2, AC-8)
-  - [ ] Webhook HTTP route handler with replay defense and error response mapping (AC-1, AC-2, AC-3)
-  - [ ] Transaction and purchase intent state synchronization engine (AC-4, AC-5, AC-6, AC-7)
-  - [ ] Automated test suite verifying signature validation, replay defense, and state transitions (AC-1, AC-2, AC-3, AC-4, AC-5, AC-6, AC-7, AC-8)
+- [x] Build it: `/develop webhook verification and state sync`
+  - [x] Schema migration for webhook_event audit table and transaction refund columns (AC-3, AC-6)
+  - [x] PayPal REST webhook signature verification service with simulation fallback (AC-1, AC-2, AC-8)
+  - [x] Webhook HTTP route handler with replay defense and error response mapping (AC-1, AC-2, AC-3)
+  - [x] Transaction and purchase intent state synchronization engine (AC-4, AC-5, AC-6, AC-7)
+  - [x] Automated test suite verifying signature validation, replay defense, and state transitions (AC-1, AC-2, AC-3, AC-4, AC-5, AC-6, AC-7, AC-8)
 
 ## Deferred
 

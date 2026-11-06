@@ -50,7 +50,34 @@ export const agentPolicy = pgTable(
   (table) => [index('agent_policy_agent_id_idx').on(table.agentId)],
 );
 
+export const AGENT_AUDIT_ACTIONS = ['freeze', 'unfreeze'] as const;
+export type AgentAuditAction = (typeof AGENT_AUDIT_ACTIONS)[number];
+
+export const agentAuditLog = pgTable(
+  'agent_audit_log',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    agentId: uuid('agent_id')
+      .notNull()
+      .references(() => agent.id, { onDelete: 'cascade' }),
+    actorUserId: text('actor_user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    action: text('action').$type<AgentAuditAction>().notNull(),
+    previousStatus: text('previous_status').notNull(),
+    newStatus: text('new_status').notNull(),
+    reason: text('reason'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index('agent_audit_log_agent_id_idx').on(table.agentId),
+    index('agent_audit_log_created_at_idx').on(table.createdAt),
+  ],
+);
+
 export type Agent = typeof agent.$inferSelect;
 export type NewAgent = typeof agent.$inferInsert;
 export type AgentPolicy = typeof agentPolicy.$inferSelect;
 export type NewAgentPolicy = typeof agentPolicy.$inferInsert;
+export type AgentAuditLog = typeof agentAuditLog.$inferSelect;
+export type NewAgentAuditLog = typeof agentAuditLog.$inferInsert;

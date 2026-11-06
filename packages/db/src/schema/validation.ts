@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { AGENT_STATUSES } from './agent';
+import { AGENT_AUDIT_ACTIONS, AGENT_STATUSES } from './agent';
 import {
   APPROVAL_REQUEST_STATUSES,
   PURCHASE_INTENT_STATUSES,
@@ -7,6 +7,7 @@ import {
 } from './commerce';
 
 export const agentStatusSchema = z.enum(AGENT_STATUSES);
+export const agentAuditActionSchema = z.enum(AGENT_AUDIT_ACTIONS);
 export const purchaseIntentStatusSchema = z.enum(PURCHASE_INTENT_STATUSES);
 export const approvalRequestStatusSchema = z.enum(APPROVAL_REQUEST_STATUSES);
 export const transactionStatusSchema = z.enum(TRANSACTION_STATUSES);
@@ -171,3 +172,26 @@ export type InsertApprovalRequestInput = z.infer<typeof insertApprovalRequestSch
 export type SelectApprovalRequestOutput = z.infer<typeof selectApprovalRequestSchema>;
 export type InsertTransactionInput = z.infer<typeof insertTransactionSchema>;
 export type SelectTransactionOutput = z.infer<typeof selectTransactionSchema>;
+
+export const insertAgentAuditLogSchema = z.object({
+  agentId: z.uuid('Valid agent identifier is required'),
+  actorUserId: z.string().min(1, 'Actor user identifier is required'),
+  action: agentAuditActionSchema,
+  previousStatus: z.string().min(1),
+  newStatus: z.string().min(1),
+  reason: z.string().max(500).optional().nullable(),
+});
+
+export const selectAgentAuditLogSchema = z.object({
+  id: z.uuid(),
+  agentId: z.uuid(),
+  actorUserId: z.string(),
+  action: agentAuditActionSchema,
+  previousStatus: z.string(),
+  newStatus: z.string(),
+  reason: z.string().nullable(),
+  createdAt: z.date(),
+});
+
+export type InsertAgentAuditLogInput = z.infer<typeof insertAgentAuditLogSchema>;
+export type SelectAgentAuditLogOutput = z.infer<typeof selectAgentAuditLogSchema>;

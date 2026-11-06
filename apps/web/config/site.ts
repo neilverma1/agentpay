@@ -1,4 +1,4 @@
-import { Home } from 'lucide-react';
+import { Home, ShieldCheck } from 'lucide-react';
 import { Metadata } from 'next';
 import {
   BASE_URL,
@@ -70,6 +70,11 @@ export const config = {
       title: 'Dashboard',
       href: '/dashboard',
       icon: Home,
+    },
+    {
+      title: 'Audit Logs',
+      href: '/audit',
+      icon: ShieldCheck,
     },
   ],
 };

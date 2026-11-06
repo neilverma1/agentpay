@@ -1,5 +1,5 @@
 import { relations } from 'drizzle-orm';
-import { agent, agentPolicy } from './agent';
+import { agent, agentAuditLog, agentPolicy } from './agent';
 import { account, session, user } from './auth';
 import { approvalRequest, purchaseIntent, transaction } from './commerce';
 
@@ -10,6 +10,7 @@ export const userRelations = relations(user, ({ many }) => ({
   purchaseIntents: many(purchaseIntent),
   transactions: many(transaction),
   reviewedApprovals: many(approvalRequest, { relationName: 'reviewer' }),
+  agentAuditLogs: many(agentAuditLog),
 }));
 
 export const agentRelations = relations(agent, ({ one, many }) => ({
@@ -24,6 +25,18 @@ export const agentRelations = relations(agent, ({ one, many }) => ({
   purchaseIntents: many(purchaseIntent),
   approvalRequests: many(approvalRequest),
   transactions: many(transaction),
+  auditLogs: many(agentAuditLog),
+}));
+
+export const agentAuditLogRelations = relations(agentAuditLog, ({ one }) => ({
+  agent: one(agent, {
+    fields: [agentAuditLog.agentId],
+    references: [agent.id],
+  }),
+  actorUser: one(user, {
+    fields: [agentAuditLog.actorUserId],
+    references: [user.id],
+  }),
 }));
 
 export const agentPolicyRelations = relations(agentPolicy, ({ one }) => ({

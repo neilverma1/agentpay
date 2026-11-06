@@ -34,7 +34,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`${fontSans.variable} ${fontMono.variable} font-sans antialiased`}>
         <Providers>
-          <main className="flex h-screen w-screen flex-col">
+          <main className="flex min-h-screen w-full flex-col overflow-x-hidden">
             {(config.layout?.showHeader ?? true) ? <Header /> : null}
             {children}
           </main>

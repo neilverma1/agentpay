@@ -8,16 +8,16 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 
 ## At a glance
 
-| #   | Feature                                    | Phase      | Status      |
-| --- | ------------------------------------------ | ---------- | ----------- |
-| 1   | Stack and architecture                     | Foundation | done        |
-| 2   | Coding standards and tooling               | Foundation | done        |
-| 3   | Core data model                            | Foundation | done        |
-| 4   | Design system and UI foundation            | Foundation | done        |
-| 5   | Core purchase loop                         | Slice 1    | done        |
-| 6   | Spending guardrails and approval threshold | Slice 2    | done        |
-| 7   | Real time audit telemetry grid             | Slice 3    | in-progress |
-| 8   | Webhook verification and state sync        | Slice 4    | planned     |
+| #   | Feature                                    | Phase      | Status  |
+| --- | ------------------------------------------ | ---------- | ------- |
+| 1   | Stack and architecture                     | Foundation | done    |
+| 2   | Coding standards and tooling               | Foundation | done    |
+| 3   | Core data model                            | Foundation | done    |
+| 4   | Design system and UI foundation            | Foundation | done    |
+| 5   | Core purchase loop                         | Slice 1    | done    |
+| 6   | Spending guardrails and approval threshold | Slice 2    | done    |
+| 7   | Real time audit telemetry grid             | Slice 3    | done    |
+| 8   | Webhook verification and state sync        | Slice 4    | planned |
 
 ## Foundations
 
@@ -101,15 +101,15 @@ spec [0005](../specs/0005-spending-guardrails-and-approval-threshold/index.md) �
 
 Render an interactive transaction and policy audit log with AG Grid, showing timestamp, agent reasoning, merchant category, dollar amount, PayPal transaction identifier, and an emergency agent wallet freeze button. **Done when:** every agent transaction displays in an interactive table with sorting, filtering, and live status updates.
 
-spec [0006](../specs/0006-real-time-audit-telemetry-grid/index.md) · code in [apps/web/](../../apps/web/)
+spec [0006](../specs/0006-real-time-audit-telemetry-grid/index.md) · code in [apps/web/](../../apps/web/), [packages/db/](../../packages/db/)
 
 - [x] Design it (spec): `/architect real time audit telemetry grid`
-- [ ] Build it: `/develop real time audit telemetry grid`
-  - [ ] Schema migration for agent audit log table and relation types (AC-5)
-  - [ ] Telemetry query endpoint with keyset pagination and session authorization (AC-1, AC-2)
-  - [ ] Emergency freeze route and purchase pre execution gate returning HTTP 423 (AC-5, AC-6)
-  - [ ] AG Grid Community integration with custom AgentPay Tailwind theme tokens (AC-3)
-  - [ ] Interactive telemetry grid with 4 second polling, drawer inspection, and freeze banner (AC-3, AC-4, AC-7, AC-8)
+- [x] Build it: `/develop real time audit telemetry grid`
+  - [x] Schema migration for agent audit log table and relation types (AC-5)
+  - [x] Telemetry query endpoint with keyset pagination and session authorization (AC-1, AC-2)
+  - [x] Emergency freeze route and purchase pre execution gate returning HTTP 423 (AC-5, AC-6)
+  - [x] AG Grid Community integration with custom AgentPay Tailwind theme tokens (AC-3)
+  - [x] Interactive telemetry grid with 4 second polling, drawer inspection, and freeze banner (AC-3, AC-4, AC-7, AC-8)
 
 ## Slice 4: Webhook verification and state sync
 

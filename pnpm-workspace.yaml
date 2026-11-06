@@ -26,6 +26,8 @@ catalogs:
     react-hook-form: ^7.62.0
     '@hookform/resolvers': ^5.2.2
     '@tanstack/react-query': ^5.87.4
+    '@tanstack/react-table': ^8.21.3
+    react-day-picker: ^10.0.2
     qrcode: ^1.5.4
     '@types/qrcode': ^1.5.5
 

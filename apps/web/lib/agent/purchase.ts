@@ -219,6 +219,13 @@ export async function executeAgentPurchaseLoop(
     throw new AgentPurchaseError('Target agent could not be resolved.', 500);
   }
 
+  if (targetAgent.status === 'frozen') {
+    throw new AgentPurchaseError(
+      'Agent wallet is currently frozen. Emergency freeze must be lifted before new purchases can be executed.',
+      423,
+    );
+  }
+
   const reasoningLog: ReasoningStep[] = [];
 
   // 3. Buyer Agent Reasoning via Vercel AI SDK or deterministic fallback
@@ -499,7 +506,37 @@ Always invoke the purchaseAsset tool to confirm your decision.`,
       })
       .where(eq(transaction.id, createdTx.id));
 
-    // 6. PayPal Capture Order
+    // 6. Pre-capture freeze verification
+    const activeCheckAgent = await db.query.agent.findFirst({
+      where: eq(agent.id, targetAgent.id),
+    });
+    if (activeCheckAgent?.status === 'frozen') {
+      await db
+        .update(purchaseIntent)
+        .set({
+          status: 'failed',
+          rejectionReason: 'Agent wallet frozen prior to payment capture.',
+          reasoningLog: reasoningLog as unknown as Array<Record<string, unknown>>,
+          updatedAt: new Date(),
+        })
+        .where(eq(purchaseIntent.id, createdIntent.id));
+      await db
+        .update(transaction)
+        .set({
+          status: 'failed',
+          updatedAt: new Date(),
+        })
+        .where(eq(transaction.id, createdTx.id));
+
+      throw new AgentPurchaseError(
+        'Agent wallet was frozen prior to payment capture. Payment execution aborted.',
+        423,
+        createdIntent.id,
+        createdTx.id,
+      );
+    }
+
+    // 7. PayPal Capture Order
     const captureRes = await capturePayPalOrder(createRes.orderId);
 
     reasoningLog.push({
@@ -743,6 +780,18 @@ export async function executeApprovedPurchaseCapture(params: {
           updatedAt: new Date(),
         })
         .where(eq(transaction.id, targetTx.id));
+    }
+
+    // Pre-capture freeze verification for approvals
+    const approvalCheckAgent = await db.query.agent.findFirst({
+      where: eq(agent.id, intent.agentId),
+    });
+    if (approvalCheckAgent?.status === 'frozen') {
+      throw new AgentPurchaseError(
+        'Agent wallet is currently frozen. Approval payment capture cannot proceed.',
+        423,
+        intent.id,
+      );
     }
 
     // 5. Capture PayPal Order

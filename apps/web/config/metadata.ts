@@ -60,6 +60,10 @@ export const pageMetadata = {
     title: 'Dashboard',
     description: 'Manage your account and view your dashboard.',
   },
+  audit: {
+    title: 'Audit Logs',
+    description: 'Real-time telemetry and compliance audit logs for autonomous agent commerce.',
+  },
   profile: {
     title: 'Profile',
     description: 'View and edit your profile information.',

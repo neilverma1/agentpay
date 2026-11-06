@@ -1,7 +1,7 @@
 # 0006. Real time audit telemetry grid
 
 **Date**: 2026-11-06
-**Status**: Proposed
+**Status**: Completed
 
 ## Summary
 
@@ -175,13 +175,13 @@ No new environment variables or secret keys are required. The feature utilizes t
 
 Following the Tracer Bullet build approach, tasks deliver vertical slices through every layer:
 
-1. **Schema migration and types**: Define `agent_audit_log` in `packages/db/src/schema/agent.ts`, add table relations, export insert and select types, and generate Drizzle migration. Satisfies **AC-5**.
-2. **Telemetry query service and route**: Implement `GET /api/agents/[agentId]/telemetry` with keyset cursor pagination, joined purchase intent, transaction, and approval data, and session ownership check. Satisfies **AC-1**, **AC-2**.
-3. **Emergency freeze route and purchase gate**: Implement `POST /api/agents/[agentId]/freeze` with atomic transaction logging to `agent_audit_log`. Add freeze pre check and pre capture check in `POST /api/purchase` returning HTTP 423 Locked. Satisfies **AC-5**, **AC-6**.
-4. **Grid package setup and token styling**: Install `ag-grid-react` and `ag-grid-community` in `apps/web`. Create AG Grid Quartz theme token overrides in `apps/web` matching AgentPay Tailwind variables for dark and light modes. Satisfies **AC-3**.
-5. **Interactive telemetry grid component**: Build `AuditTelemetryGrid` component with AG Grid column definitions (timestamp, merchant, category, amount, status badge, PayPal identifiers, reasoning steps), custom cell renderers using `@workspace/ui`, sorting, filtering, and 4 second polling via `@tanstack/react-query`. Satisfies **AC-3**, **AC-7**, **AC-8**.
-6. **Reasoning trace drawer and freeze banner**: Implement `TelemetryDetailDrawer` using `@workspace/ui/components/sheet` or slide out panel with Shiki formatted traces. Implement `AgentFreezeControl` banner and toggle button with toast notifications. Satisfies **AC-4**, **AC-8**.
-7. **Dashboard integration and end to end verification**: Embed the telemetry grid and freeze controls on `apps/web/app/(app)/dashboard/page.tsx`. Verify live updates, drawer inspection, emergency freeze enforcement, and unit tests. Satisfies **AC-1**, **AC-2**, **AC-3**, **AC-4**, **AC-5**, **AC-6**, **AC-7**, **AC-8**.
+- [x] 1. **Schema migration and types**: Define `agent_audit_log` in `packages/db/src/schema/agent.ts`, add table relations, export insert and select types, and generate Drizzle migration. Satisfies **AC-5**.
+- [x] 2. **Telemetry query service and route**: Implement `GET /api/agents/[agentId]/telemetry` with keyset cursor pagination, joined purchase intent, transaction, and approval data, and session ownership check. Satisfies **AC-1**, **AC-2**.
+- [x] 3. **Emergency freeze route and purchase gate**: Implement `POST /api/agents/[agentId]/freeze` with atomic transaction logging to `agent_audit_log`. Add freeze pre check and pre capture check in `POST /api/purchase` returning HTTP 423 Locked. Satisfies **AC-5**, **AC-6**.
+- [x] 4. **Grid package setup and token styling**: Install `ag-grid-react` and `ag-grid-community` in `apps/web`. Create AG Grid Quartz theme token overrides in `apps/web` matching AgentPay Tailwind variables for dark and light modes. Satisfies **AC-3**.
+- [x] 5. **Interactive telemetry grid component**: Build `AuditTelemetryGrid` component with AG Grid column definitions (timestamp, merchant, category, amount, status badge, PayPal identifiers, reasoning steps), custom cell renderers using `@workspace/ui`, sorting, filtering, and 4 second polling via `@tanstack/react-query`. Satisfies **AC-3**, **AC-7**, **AC-8**.
+- [x] 6. **Reasoning trace drawer and freeze banner**: Implement `TelemetryDetailDrawer` using `@workspace/ui/components/sheet` or slide out panel with Shiki formatted traces. Implement `AgentFreezeControl` banner and toggle button with toast notifications. Satisfies **AC-4**, **AC-8**.
+- [x] 7. **Dashboard integration and end to end verification**: Embed the telemetry grid and freeze controls on `apps/web/app/(app)/dashboard/page.tsx`. Verify live updates, drawer inspection, emergency freeze enforcement, and unit tests. Satisfies **AC-1**, **AC-2**, **AC-3**, **AC-4**, **AC-5**, **AC-6**, **AC-7**, **AC-8**.
 
 ## Consequences
 

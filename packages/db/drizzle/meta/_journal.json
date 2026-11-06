@@ -15,6 +15,13 @@
       "when": 1793886742852,
       "tag": "0001_omniscient_jamie_braddock",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793911566666,
+      "tag": "0002_nappy_famine",
+      "breakpoints": true
     }
   ]
 }

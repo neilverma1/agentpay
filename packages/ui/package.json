@@ -27,6 +27,7 @@
     "next-themes": "catalog:web",
     "radix-ui": "catalog:web",
     "react": "catalog:core",
+    "react-day-picker": "catalog:web",
     "react-dom": "catalog:core",
     "react-hook-form": "catalog:web",
     "shiki": "catalog:web",

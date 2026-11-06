@@ -8,16 +8,17 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 
 ## At a glance
 
-| #   | Feature                                    | Phase      | Status |
-| --- | ------------------------------------------ | ---------- | ------ |
-| 1   | Stack and architecture                     | Foundation | done   |
-| 2   | Coding standards and tooling               | Foundation | done   |
-| 3   | Core data model                            | Foundation | done   |
-| 4   | Design system and UI foundation            | Foundation | done   |
-| 5   | Core purchase loop                         | Slice 1    | done   |
-| 6   | Spending guardrails and approval threshold | Slice 2    | done   |
-| 7   | Real time audit telemetry grid             | Slice 3    | done   |
-| 8   | Webhook verification and state sync        | Slice 4    | done   |
+| #   | Feature                                    | Phase      | Status      |
+| --- | ------------------------------------------ | ---------- | ----------- |
+| 1   | Stack and architecture                     | Foundation | done        |
+| 2   | Coding standards and tooling               | Foundation | done        |
+| 3   | Core data model                            | Foundation | done        |
+| 4   | Design system and UI foundation            | Foundation | done        |
+| 5   | Core purchase loop                         | Slice 1    | done        |
+| 6   | Spending guardrails and approval threshold | Slice 2    | done        |
+| 7   | Real time audit telemetry grid             | Slice 3    | done        |
+| 8   | Webhook verification and state sync        | Slice 4    | done        |
+| 9   | Interactive agent chat threads             | Slice 5    | in-progress |
 
 ## Foundations
 
@@ -127,6 +128,22 @@ spec [0007](../specs/0007-webhook-verification-and-state-sync/index.md) · code 
   - [x] Transaction and purchase intent state synchronization engine (AC-4, AC-5, AC-6, AC-7)
   - [x] Automated test suite verifying signature validation, replay defense, and state transitions (AC-1, AC-2, AC-3, AC-4, AC-5, AC-6, AC-7, AC-8)
 
+## Slice 5: Interactive agent chat threads
+
+### 9. Interactive agent chat threads · in-progress
+
+Build dedicated `/chat` and `/chat/[id]` routes with database backed conversation persistence, real time streaming reasoning, generative PayPal purchase cards, and inline human in the loop approvals. **Done when:** an operator can start a new purchase mission at `/chat`, navigate persistent threads at `/chat/[id]`, watch the agent stream tool traces, and approve or decline paused transactions directly in the conversation feed.
+
+spec [0008](../specs/0008-interactive-agent-chat-threads/index.md)
+
+- [x] Design it (spec): `/architect interactive agent chat threads`
+- [ ] Build it: `/develop interactive agent chat threads`
+  - [ ] Schema migration for chat_thread and chat_message tables in packages/db (AC-7, AC-8)
+  - [ ] Chat thread CRUD API and /api/v1/chat/[id] streaming route with AI SDK (AC-2, AC-3, AC-8)
+  - [ ] New mission launcher view at /chat with prompt suggestions and PromptInput (AC-1, AC-2)
+  - [ ] Persistent thread view at /chat/[id] with reasoning drawers and tool traces (AC-3, AC-4, AC-7)
+  - [ ] Inline approval confirmation card with live PayPal payment capture (AC-5, AC-6)
+
 ## Deferred
 
 Out of scope for the current hackathon pass, kept so the plan stays honest.
@@ -135,6 +152,8 @@ Out of scope for the current hackathon pass, kept so the plan stays honest.
 - **Multi agent wallet sharing**: pooled budgets and limits across multiple AI workers · needs a decision
 - **Simulated dispute flow**: automated dispute defense and partial refund negotiation · needs a decision
 - **Multi currency conversion**: live foreign exchange rates and currency handling · needs a decision
+- **Chat audit log export**: formatted JSON or PDF export of conversational audit threads · from spec 0008
+- **Dynamic model selector**: interactive model switching between Gemini 2.5 Flash and Gemini 2.5 Pro · from spec 0008
 
 ## Legend
 

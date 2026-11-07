@@ -1,6 +1,7 @@
 'use client';
 
 import { AppSidebar } from '@/components/layout/app-sidebar';
+import { HeaderProvider } from '@/components/layout/header-context';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SidebarProvider } from '@workspace/ui/components/sidebar';
 import { TooltipProvider } from '@workspace/ui/components/tooltip';
@@ -21,11 +22,13 @@ export function Providers({ children }: { children: React.ReactNode }) {
     >
       <QueryClientProvider client={queryClient}>
         <SidebarProvider>
-          <TooltipProvider>
-            <AppSidebar />
-            <Toaster richColors />
-            {children}
-          </TooltipProvider>
+          <HeaderProvider>
+            <TooltipProvider>
+              <AppSidebar />
+              <Toaster richColors />
+              {children}
+            </TooltipProvider>
+          </HeaderProvider>
         </SidebarProvider>
       </QueryClientProvider>
     </NextThemesProvider>

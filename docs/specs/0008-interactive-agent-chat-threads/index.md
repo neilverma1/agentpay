@@ -1,7 +1,7 @@
 # 0008. Interactive Agent Chat Threads
 
 **Date**: 2026-11-07
-**Status**: Proposed
+**Status**: Accepted
 
 ## Summary
 
@@ -122,11 +122,11 @@ approval_card: pending_approval -> approved (completed) | declined (cancelled)
 
 Milestones ordered by Tracer Bullet delivery:
 
-- [ ] Milestone 1 (Data persistence): Add `chat_thread` and `chat_message` schemas in packages/db with relations, generate Drizzle migration, and verify build (AC-7, AC-8)
-- [ ] Milestone 2 (Chat API and streaming service): Implement thread CRUD routes and `/api/v1/chat/[id]` streaming endpoint with AI SDK tools and session authorization (AC-2, AC-3, AC-8)
-- [ ] Milestone 3 (Launcher UI at /chat): Build the `/chat` route featuring prompt suggestion pills, active wallet budget meter, and PromptInput composer (AC-1, AC-2)
-- [ ] Milestone 4 (Thread view and generative UI at /chat/[id]): Build the `/chat/[id]` conversation screen with message scroller, collapsible reasoning accordion, and tool execution traces (AC-3, AC-4, AC-7)
-- [ ] Milestone 5 (Inline approvals and live PayPal capture): Connect inline confirmation cards to `/api/v1/approvals/[id]/decision` for one click in place capture and declining (AC-5, AC-6)
+- [x] Milestone 1 (Data persistence): Add `chat_thread` and `chat_message` schemas in packages/db with relations, generate Drizzle migration, and verify build (AC-7, AC-8)
+- [x] Milestone 2 (Chat API and streaming service): Implement thread CRUD routes and `/api/v1/chat/[id]` streaming endpoint with AI SDK tools and session authorization (AC-2, AC-3, AC-8)
+- [x] Milestone 3 (Launcher UI at /chat): Build the `/chat` route featuring prompt suggestion pills, active wallet budget meter, and PromptInput composer (AC-1, AC-2)
+- [x] Milestone 4 (Thread view and generative UI at /chat/[id]): Build the `/chat/[id]` conversation screen with message scroller, collapsible reasoning accordion, and tool execution traces (AC-3, AC-4, AC-7)
+- [x] Milestone 5 (Inline approvals and live PayPal capture): Connect inline confirmation cards to `/api/v1/approvals/[id]/decision` for one click in place capture and declining (AC-5, AC-6)
 
 ## Consequences
 

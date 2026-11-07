@@ -8,7 +8,7 @@ Next.js 16 web application hosting the user dashboard, settings, auth flows, and
 
 | File                                           | Owns                                                         |
 | ---------------------------------------------- | ------------------------------------------------------------ |
-| `app/(app)/dashboard/page.tsx`                 | Main financial dashboard and live telemetry view             |
+| `app/(app)/chat/page.tsx`                      | Autonomous agent chat interface and chat launcher            |
 | `app/api/auth/[...all]/route.ts`               | Better Auth route handlers                                   |
 | `app/api/v1/storage/presigned-upload/route.ts` | Presigned URL upload handler                                 |
 | `app/api/webhooks/paypal/route.ts`             | PayPal cryptographic webhook ingestion endpoint              |

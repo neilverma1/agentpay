@@ -12,7 +12,7 @@ vi.mock('@workspace/auth/client', () => ({
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ replace: replaceMock }),
-  usePathname: () => '/dashboard',
+  usePathname: () => '/chat',
 }));
 
 describe('useAuthUser', () => {

@@ -41,20 +41,29 @@ describe('proxy middleware', () => {
   it('redirects unauthenticated users from protected routes', async () => {
     getSessionMock.mockResolvedValue(null);
 
-    await proxy(makeRequest('https://example.com/dashboard?tab=activity') as NextRequest);
+    await proxy(makeRequest('https://example.com/chat') as NextRequest);
 
     expect(redirectMock).toHaveBeenCalledTimes(1);
     const redirectedTo = redirectMock.mock.calls[0]![0]!.toString();
-    expect(redirectedTo).toContain('/sign-in?callbackUrl=%2Fdashboard%3Ftab%3Dactivity');
+    expect(redirectedTo).toContain('/sign-in?callbackUrl=%2Fchat');
   });
 
-  it('redirects authenticated users away from auth routes', async () => {
+  it('redirects authenticated users away from auth routes to chat', async () => {
     getSessionMock.mockResolvedValue({ user: { id: '1' } });
 
     await proxy(makeRequest('https://example.com/sign-in') as NextRequest);
 
     expect(redirectMock).toHaveBeenCalledTimes(1);
-    expect(redirectMock.mock.calls[0]![0]!.toString()).toBe('https://example.com/');
+    expect(redirectMock.mock.calls[0]![0]!.toString()).toBe('https://example.com/chat');
+  });
+
+  it('redirects authenticated users away from landing page to chat', async () => {
+    getSessionMock.mockResolvedValue({ user: { id: '1' } });
+
+    await proxy(makeRequest('https://example.com/') as NextRequest);
+
+    expect(redirectMock).toHaveBeenCalledTimes(1);
+    expect(redirectMock.mock.calls[0]![0]!.toString()).toBe('https://example.com/chat');
   });
 
   it('allows public routes for unauthenticated users', async () => {

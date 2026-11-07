@@ -4,9 +4,9 @@ _Steps derived from spec 0008 acceptance criteria. `/check verify` runs these; `
 
 ## Commands
 
-- [ ] `pnpm check-types` → all monorepo packages typecheck cleanly → AC-1, AC-2, AC-3, AC-4, AC-5, AC-6, AC-7, AC-8
-- [ ] `pnpm --filter web test app/api/v1/chat/route.test.ts` → tests verify thread creation, message persistence, tenant protection, and streaming response headers → AC-2, AC-3, AC-7, AC-8
-- [ ] `pnpm --filter db db:generate` → Drizzle generates migration for chat_thread and chat_message without drift → AC-7
+- [x] `pnpm check-types` → all monorepo packages typecheck cleanly → AC-1, AC-2, AC-3, AC-4, AC-5, AC-6, AC-7, AC-8
+- [x] `pnpm --filter web test app/api/v1/chat` → tests verify thread creation, message persistence, tenant protection, and route handlers → AC-2, AC-3, AC-7, AC-8
+- [x] `pnpm --filter db db:generate` → Drizzle generates migration for chat_thread and chat_message without drift → AC-7
 
 ## HTTP and UI / Manual
 

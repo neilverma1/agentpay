@@ -56,7 +56,7 @@ describe('AuthForm', () => {
     vi.clearAllMocks();
     authStateMock.mockReturnValue({ isAuthenticated: false, isLoading: false });
     searchParamsMock.mockReturnValue({
-      get: (key: string) => (key === 'callbackUrl' ? '/dashboard?tab=1' : null),
+      get: (key: string) => (key === 'callbackUrl' ? '/chat?tab=1' : null),
     });
   });
 
@@ -69,7 +69,7 @@ describe('AuthForm', () => {
 
     expect(signIn.social).toHaveBeenCalledWith({
       provider: 'google',
-      callbackURL: '/dashboard?tab=1',
+      callbackURL: '/chat?tab=1',
     });
   });
 
@@ -85,7 +85,7 @@ describe('AuthForm', () => {
     render(<AuthForm mode="sign-in" />);
 
     await waitFor(() => {
-      expect(replaceMock).toHaveBeenCalledWith('/');
+      expect(replaceMock).toHaveBeenCalledWith('/chat');
     });
   });
 });

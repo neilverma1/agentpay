@@ -1,4 +1,4 @@
-import { Home, ShieldCheck } from 'lucide-react';
+import { ShieldCheck, SquarePen } from 'lucide-react';
 import { Metadata } from 'next';
 import {
   BASE_URL,
@@ -67,9 +67,9 @@ export const config = {
   ],
   nav: [
     {
-      title: 'Dashboard',
-      href: '/dashboard',
-      icon: Home,
+      title: 'New Chat',
+      href: '/chat',
+      icon: SquarePen,
     },
     {
       title: 'Audit Logs',

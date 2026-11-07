@@ -7,6 +7,11 @@ import { config } from '@/config/site';
 import { useAuthUser } from '@/hooks/use-auth-user';
 import { Button } from '@workspace/ui/components/button';
 import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@workspace/ui/components/collapsible';
+import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
@@ -20,15 +25,78 @@ import {
   SidebarRail,
   useSidebar,
 } from '@workspace/ui/components/sidebar';
+import { Skeleton } from '@workspace/ui/components/skeleton';
 import { cn } from '@workspace/ui/lib/utils';
-import { LogIn, UserPlus } from 'lucide-react';
+import { ChevronRight, LogIn, UserPlus } from 'lucide-react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import * as React from 'react';
 
+interface SidebarThread {
+  id: string;
+  title: string;
+  status: string;
+}
+
+function getStatusDotColor(status: string): string {
+  switch (status.toLowerCase()) {
+    case 'active':
+      return 'bg-emerald-500 animate-pulse';
+    case 'pending_approval':
+    case 'paused':
+      return 'bg-amber-500';
+    case 'completed':
+    case 'settled':
+      return 'bg-sky-500';
+    case 'archived':
+      return 'bg-muted-foreground/50';
+    case 'failed':
+    case 'rejected':
+      return 'bg-rose-500';
+    default:
+      return 'bg-emerald-500';
+  }
+}
+
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const pathname = usePathname();
   const { state } = useSidebar();
-  const { isAuthenticated } = useAuthUser();
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuthUser();
   const isSidebarExpanded = state === 'expanded';
+
+  const [threads, setThreads] = React.useState<SidebarThread[]>([]);
+  const [isLoadingThreads, setIsLoadingThreads] = React.useState(true);
+
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (isAuthLoading) return;
+    if (!isAuthenticated) {
+      setIsLoadingThreads(false);
+      return;
+    }
+    let isMounted = true;
+    setIsLoadingThreads(true);
+
+    fetch('/api/v1/chat/threads?limit=20')
+      .then((res) => (res.ok ? res.json() : Promise.resolve({ threads: [] })))
+      .then((data) => {
+        if (isMounted) {
+          setThreads(data.threads || []);
+        }
+      })
+      .catch((err) => {
+        console.error('Failed to load recent threads for sidebar', err);
+      })
+      .finally(() => {
+        if (isMounted) {
+          setIsLoadingThreads(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isAuthenticated, isAuthLoading, pathname]);
 
   return (
     <Sidebar collapsible={config.layout?.sidebarCollapsible ?? 'offcanvas'} {...props}>
@@ -45,7 +113,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {config.nav.map((item) => (
@@ -61,9 +128,77 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        <Collapsible defaultOpen className="group/collapsible">
+          <SidebarGroup>
+            <SidebarGroupLabel asChild className="mb-0.5">
+              <CollapsibleTrigger className="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex w-full cursor-pointer items-center justify-between rounded-md px-2 py-1 text-xs font-medium">
+                <span>Recents</span>
+                <ChevronRight className="size-3.5 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+              </CollapsibleTrigger>
+            </SidebarGroupLabel>
+            <CollapsibleContent className="pt-1">
+              <SidebarGroupContent>
+                <SidebarMenu className="space-y-1">
+                  {(isLoadingThreads || isAuthLoading) && threads.length === 0 ? (
+                    <>
+                      {Array.from({ length: 6 }).map((_, i) => (
+                        <SidebarMenuItem key={i}>
+                          <div className="flex h-8 w-full items-center gap-2.5 rounded-md px-2.5">
+                            <Skeleton className="size-2 shrink-0 rounded-full" />
+                            <Skeleton className="h-3.5 flex-1 rounded" />
+                          </div>
+                        </SidebarMenuItem>
+                      ))}
+                    </>
+                  ) : threads.length === 0 ? (
+                    <div className="text-muted-foreground px-2.5 py-2 text-xs">
+                      No previous missions
+                    </div>
+                  ) : (
+                    threads.map((thread) => (
+                      <SidebarMenuItem key={thread.id}>
+                        <SidebarMenuButton
+                          asChild
+                          isActive={pathname === `/chat/${thread.id}`}
+                          tooltip={thread.title}
+                          className="h-8 w-full gap-2.5 px-2.5"
+                        >
+                          <Link
+                            href={`/chat/${thread.id}`}
+                            className="flex w-full min-w-0 items-center gap-2.5"
+                          >
+                            <span
+                              className={cn(
+                                'size-2 shrink-0 rounded-full',
+                                getStatusDotColor(thread.status),
+                              )}
+                              title={`Status: ${thread.status}`}
+                            />
+                            <span className="truncate">{thread.title}</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    ))
+                  )}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </CollapsibleContent>
+          </SidebarGroup>
+        </Collapsible>
       </SidebarContent>
-      <SidebarFooter>
-        {isAuthenticated ? (
+      <SidebarFooter className="border-sidebar-border border-t">
+        {isAuthLoading ? (
+          <div className="flex h-12 w-full items-center gap-2 px-2">
+            <Skeleton className="size-8 shrink-0 rounded-lg" />
+            {isSidebarExpanded && (
+              <div className="flex flex-1 flex-col gap-1.5 overflow-hidden">
+                <Skeleton className="h-3.5 w-24 rounded" />
+                <Skeleton className="h-3 w-32 rounded" />
+              </div>
+            )}
+          </div>
+        ) : isAuthenticated ? (
           <>
             {!config.layout?.showHeader ? <ThemeSwitcher /> : null}
             <NavUser />

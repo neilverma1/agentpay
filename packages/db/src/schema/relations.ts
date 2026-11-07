@@ -1,6 +1,7 @@
 import { relations } from 'drizzle-orm';
 import { agent, agentAuditLog, agentPolicy } from './agent';
 import { account, session, user } from './auth';
+import { chatMessage, chatThread } from './chat';
 import { approvalRequest, purchaseIntent, transaction } from './commerce';
 
 export const userRelations = relations(user, ({ many }) => ({
@@ -11,6 +12,7 @@ export const userRelations = relations(user, ({ many }) => ({
   transactions: many(transaction),
   reviewedApprovals: many(approvalRequest, { relationName: 'reviewer' }),
   agentAuditLogs: many(agentAuditLog),
+  chatThreads: many(chatThread),
 }));
 
 export const agentRelations = relations(agent, ({ one, many }) => ({
@@ -26,6 +28,7 @@ export const agentRelations = relations(agent, ({ one, many }) => ({
   approvalRequests: many(approvalRequest),
   transactions: many(transaction),
   auditLogs: many(agentAuditLog),
+  chatThreads: many(chatThread),
 }));
 
 export const agentAuditLogRelations = relations(agentAuditLog, ({ one }) => ({
@@ -46,7 +49,7 @@ export const agentPolicyRelations = relations(agentPolicy, ({ one }) => ({
   }),
 }));
 
-export const purchaseIntentRelations = relations(purchaseIntent, ({ one }) => ({
+export const purchaseIntentRelations = relations(purchaseIntent, ({ one, many }) => ({
   agent: one(agent, {
     fields: [purchaseIntent.agentId],
     references: [agent.id],
@@ -63,6 +66,7 @@ export const purchaseIntentRelations = relations(purchaseIntent, ({ one }) => ({
     fields: [purchaseIntent.id],
     references: [transaction.purchaseIntentId],
   }),
+  chatMessages: many(chatMessage),
 }));
 
 export const approvalRequestRelations = relations(approvalRequest, ({ one }) => ({
@@ -93,5 +97,28 @@ export const transactionRelations = relations(transaction, ({ one }) => ({
   user: one(user, {
     fields: [transaction.userId],
     references: [user.id],
+  }),
+}));
+
+export const chatThreadRelations = relations(chatThread, ({ one, many }) => ({
+  user: one(user, {
+    fields: [chatThread.userId],
+    references: [user.id],
+  }),
+  agent: one(agent, {
+    fields: [chatThread.agentId],
+    references: [agent.id],
+  }),
+  messages: many(chatMessage),
+}));
+
+export const chatMessageRelations = relations(chatMessage, ({ one }) => ({
+  thread: one(chatThread, {
+    fields: [chatMessage.threadId],
+    references: [chatThread.id],
+  }),
+  purchaseIntent: one(purchaseIntent, {
+    fields: [chatMessage.purchaseIntentId],
+    references: [purchaseIntent.id],
   }),
 }));

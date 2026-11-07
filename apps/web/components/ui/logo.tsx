@@ -3,12 +3,12 @@
 import { config } from '@/config/site';
 import { useSidebar } from '@workspace/ui/components/sidebar';
 import { cn } from '@workspace/ui/lib/utils';
-import { Layers } from 'lucide-react';
-import Image from 'next/image';
-import { useState } from 'react';
+import { Bot, type LucideIcon } from 'lucide-react';
 
-type LogoProps = {
+export type LogoProps = {
   variant: 'default' | 'home' | 'sidebar' | 'notFound' | 'error' | 'text-only';
+  icon?: LucideIcon;
+  showText?: boolean;
   classes?: {
     container?: string;
     logo?: string;
@@ -17,53 +17,47 @@ type LogoProps = {
   };
 };
 
-export function Logo({ variant, classes }: LogoProps) {
+export function Logo({ variant, icon: CustomIcon, showText: showTextProp, classes }: LogoProps) {
   const { state } = useSidebar();
-  const [imageError, setImageError] = useState(false);
   const defaults = getDefaults(variant);
   const showLogo = variant !== 'text-only';
-  const showText =
-    ['default', 'text-only', 'home'].includes(variant) ||
-    (variant === 'sidebar' && state === 'expanded');
 
-  const imageSize = ['home', 'error', 'notFound'].includes(variant) ? 64 : 28;
+  const shouldShowText =
+    showTextProp ??
+    (['default', 'text-only'].includes(variant) || (variant === 'sidebar' && state === 'expanded'));
+
+  const IconComponent = CustomIcon || Bot;
+  const brandName = config.name || 'AgentPay';
 
   return (
     <div className={cn(defaults.container, classes?.container ?? '')}>
-      {showLogo ? (
-        <div
-          className={cn(
-            defaults.logo,
-            imageError && 'bg-sidebar-primary text-sidebar-primary-foreground',
-            classes?.logo ?? '',
-          )}
-        >
-          {!imageError ? (
-            <Image
-              src="/logo.png"
-              alt={config.name}
-              width={imageSize}
-              height={imageSize}
-              className={cn('size-full rounded-lg object-contain', classes?.icon ?? '')}
-              priority
-              onError={() => setImageError(true)}
-            />
-          ) : (
-            <Layers className={cn(defaults.icon, classes?.icon ?? '')} />
-          )}
+      {showLogo && (
+        <div className={cn(defaults.logo, classes?.logo ?? '')}>
+          <IconComponent className={cn(defaults.icon, classes?.icon ?? '')} />
         </div>
-      ) : null}
-      {showText && <span className={cn(defaults.text, classes?.text ?? '')}>{config.name}</span>}
+      )}
+      {shouldShowText && (
+        <span className={cn(defaults.text, classes?.text ?? '')}>
+          {brandName.toLowerCase() === 'agentpay' ? (
+            <>
+              <span className="text-foreground font-semibold">Agent</span>
+              <span className="text-primary font-bold">Pay</span>
+            </>
+          ) : (
+            brandName
+          )}
+        </span>
+      )}
     </div>
   );
 }
 
 function getDefaults(variant: LogoProps['variant']) {
-  const containerBaseClass = 'flex items-center gap-2';
+  const containerBaseClass = 'flex items-center gap-2.5 select-none';
   const logoBaseClass =
-    'flex aspect-square size-7 items-center justify-center overflow-hidden rounded-lg';
-  const iconBaseClass = 'size-5';
-  const textBaseClass = 'text-xl font-medium tracking-tight';
+    'flex aspect-square size-7 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-xs transition-colors';
+  const iconBaseClass = 'size-4 shrink-0';
+  const textBaseClass = 'text-base tracking-tight leading-none';
 
   switch (variant) {
     case 'sidebar':
@@ -71,30 +65,34 @@ function getDefaults(variant: LogoProps['variant']) {
         container: cn(containerBaseClass),
         logo: cn(logoBaseClass),
         icon: cn(iconBaseClass),
-        text: cn(textBaseClass, '!text-xl'),
+        text: cn(textBaseClass, 'text-base font-semibold'),
       };
     case 'home':
     case 'error':
     case 'notFound':
       return {
-        container: cn(containerBaseClass),
-        logo: cn(logoBaseClass, 'size-16 rounded-2xl'),
+        container: cn(containerBaseClass, 'flex-col justify-center gap-3'),
+        logo: cn(
+          logoBaseClass,
+          'size-16 rounded-2xl shadow-sm bg-primary/10 text-primary border border-primary/20',
+        ),
         icon: cn(iconBaseClass, 'size-8'),
-        text: cn(textBaseClass),
+        text: cn(textBaseClass, 'text-xl font-bold'),
       };
     case 'text-only':
       return {
         container: cn(containerBaseClass),
         logo: '',
         icon: '',
-        text: cn(textBaseClass, 'text-lg sm:text-xl font-medium'),
+        text: cn(textBaseClass, 'text-lg sm:text-xl font-semibold'),
       };
+    case 'default':
     default:
       return {
         container: cn(containerBaseClass),
         logo: cn(logoBaseClass),
         icon: cn(iconBaseClass),
-        text: cn(textBaseClass),
+        text: cn(textBaseClass, 'text-base font-semibold'),
       };
   }
 }

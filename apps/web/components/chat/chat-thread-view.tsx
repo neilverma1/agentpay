@@ -1,0 +1,628 @@
+'use client';
+
+import { MarkdownContent } from '@/components/chat/markdown-content';
+import { PaymentReceiptCard, cleanItemName } from '@/components/chat/payment-receipt-card';
+import { PurchaseDeclinedCard } from '@/components/chat/purchase-declined-card';
+import { useHeader } from '@/components/layout/header-context';
+import { PromptInput } from '@/components/prompt-input';
+import { Reasoning, type ReasoningStep } from '@/components/reasoning';
+import { Badge } from '@workspace/ui/components/badge';
+import { Button } from '@workspace/ui/components/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@workspace/ui/components/card';
+import { Skeleton } from '@workspace/ui/components/skeleton';
+import { AlertTriangle, Bot, Loader2, ShieldCheck, Sparkles, User } from 'lucide-react';
+import * as React from 'react';
+import { toast } from 'sonner';
+
+export interface ChatThreadViewProps {
+  threadId: string;
+}
+
+export interface ChatMessageItem {
+  id: string;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  parts?: Array<Record<string, unknown>>;
+  createdAt: string;
+}
+
+interface ThreadDetails {
+  id: string;
+  title: string;
+  status: string;
+  createdAt: string;
+  agent: {
+    id: string;
+    name: string;
+    model: string;
+    status: string;
+  };
+}
+
+function formatRuleTrigger(rule: unknown): string {
+  if (typeof rule !== 'string' || !rule) {
+    return 'Exceeds autonomous spending threshold. Authorization required before PayPal capture.';
+  }
+  if (rule === 'require_approval_above_cents') {
+    return 'Exceeds autonomous spending threshold. Requires operator authorization before PayPal captures funds.';
+  }
+  if (rule === 'max_daily_spend_cents') {
+    return 'Exceeds daily spending limit. Requires operator authorization to proceed.';
+  }
+  if (rule === 'single_transaction_limit_cents') {
+    return 'Exceeds single transaction limit. Requires operator authorization to proceed.';
+  }
+  return rule.replace(/_/g, ' ');
+}
+
+export function ChatThreadView({ threadId }: ChatThreadViewProps) {
+  const { setTitle } = useHeader();
+  const [thread, setThread] = React.useState<ThreadDetails | null>(null);
+  const [isLoadingThread, setIsLoadingThread] = React.useState(true);
+  const [messages, setMessages] = React.useState<ChatMessageItem[]>([]);
+  const [inputText, setInputText] = React.useState('');
+  const [isStreaming, setIsStreaming] = React.useState(false);
+  const [streamingReasoning, setStreamingReasoning] = React.useState<ReasoningStep[]>([]);
+  const [actionCardState, setActionCardState] = React.useState<
+    Record<string, 'pending' | 'approved' | 'rejected'>
+  >({});
+  const [actionCardDetails, setActionCardDetails] = React.useState<
+    Record<string, Record<string, unknown>>
+  >({});
+  const [actionLoadingId, setActionLoadingId] = React.useState<string | null>(null);
+  const messagesEndRef = React.useRef<HTMLDivElement>(null);
+  const triggerStreamingRef = React.useRef<(promptToSend: string) => Promise<void>>(undefined);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  // Load thread and messages
+  React.useEffect(() => {
+    let isCancelled = false;
+    async function loadData() {
+      setIsLoadingThread(true);
+      try {
+        const res = await fetch(`/api/v1/chat/threads/${threadId}`);
+        if (!res.ok) throw new Error('Thread not found');
+        const data = await res.json();
+        if (isCancelled) return;
+        setThread(data.thread);
+        setMessages(data.messages || []);
+
+        // Check if there is only a user message and no assistant response yet
+        const lastMsg = data.messages?.[data.messages.length - 1];
+        if (lastMsg && lastMsg.role === 'user' && data.messages.length === 1) {
+          triggerStreamingRef.current?.(lastMsg.content);
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        if (!isCancelled) {
+          setIsLoadingThread(false);
+        }
+      }
+    }
+    loadData();
+    return () => {
+      isCancelled = true;
+    };
+  }, [threadId]);
+
+  React.useEffect(() => {
+    scrollToBottom();
+  }, [messages, streamingReasoning, isStreaming]);
+
+  React.useEffect(() => {
+    if (isLoadingThread) {
+      setTitle(<Skeleton className="h-4 w-48 max-w-[50vw] sm:w-64" />);
+      return;
+    }
+
+    if (thread?.title) {
+      const firstUserMessage = messages.find((m) => m.role === 'user')?.content;
+      const displayTitle =
+        thread.title.endsWith('...') && firstUserMessage ? firstUserMessage : thread.title;
+
+      setTitle(
+        <span className="text-foreground block truncate text-sm font-semibold" title={displayTitle}>
+          {displayTitle}
+        </span>,
+      );
+    } else {
+      setTitle(null);
+    }
+
+    return () => {
+      setTitle(null);
+    };
+  }, [isLoadingThread, thread?.title, messages, setTitle]);
+
+  const triggerStreamingExecution = async (promptToSend: string) => {
+    if (isStreaming) return;
+    setIsStreaming(true);
+    setStreamingReasoning([]);
+
+    const tempAssistantId = `temp-${Date.now()}`;
+    const initialAssistantMsg: ChatMessageItem = {
+      id: tempAssistantId,
+      role: 'assistant',
+      content: '',
+      parts: [],
+      createdAt: new Date().toISOString(),
+    };
+
+    setMessages((prev) => [...prev, initialAssistantMsg]);
+
+    try {
+      const response = await fetch(`/api/v1/chat/${threadId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: promptToSend }),
+      });
+
+      if (!response.ok || !response.body) {
+        throw new Error('Failed to start execution stream');
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n\n');
+        buffer = lines.pop() || '';
+
+        for (const block of lines) {
+          if (!block.trim()) continue;
+          const eventMatch = block.match(/event:\s*(.+)/);
+          const dataMatch = block.match(/data:\s*(.+)/);
+
+          if (eventMatch && eventMatch[1] && dataMatch && dataMatch[1]) {
+            const eventType = eventMatch[1].trim();
+            let parsedData: Record<string, unknown> = {};
+            try {
+              parsedData = JSON.parse(dataMatch[1].trim());
+            } catch {
+              continue;
+            }
+
+            if (
+              eventType === 'thinking' ||
+              eventType === 'tool_call' ||
+              eventType === 'reasoning_step'
+            ) {
+              const newStep: ReasoningStep = {
+                id: `step-${Date.now()}-${streamingReasoning.length + 1}`,
+                text:
+                  (parsedData.thought as string) ||
+                  (parsedData.toolName as string) ||
+                  'Evaluating policy...',
+                timestamp: (parsedData.timestamp as string) || new Date().toLocaleTimeString(),
+              };
+
+              setStreamingReasoning((prev) => [...prev, newStep]);
+            } else if (eventType === 'text') {
+              const textContent = (parsedData.content as string) || '';
+              setMessages((prev) =>
+                prev.map((msg) =>
+                  msg.id === tempAssistantId ? { ...msg, content: textContent } : msg,
+                ),
+              );
+            } else if (eventType === 'approval_required') {
+              const approvalReqId =
+                (parsedData.approvalRequestId as string) || `appr-${Date.now()}`;
+              setActionCardState((prev) => ({ ...prev, [approvalReqId]: 'pending' }));
+              setActionCardDetails((prev) => ({ ...prev, [approvalReqId]: parsedData }));
+
+              setMessages((prev) =>
+                prev.map((msg) => {
+                  if (msg.id === tempAssistantId) {
+                    const existingParts = msg.parts || [];
+                    return {
+                      ...msg,
+                      parts: [
+                        ...existingParts,
+                        {
+                          type: 'action_card',
+                          cardType: 'approval_required',
+                          ...parsedData,
+                        },
+                      ],
+                    };
+                  }
+                  return msg;
+                }),
+              );
+            } else if (eventType === 'payment_completed') {
+              setMessages((prev) =>
+                prev.map((msg) => {
+                  if (msg.id === tempAssistantId) {
+                    const existingParts = msg.parts || [];
+                    return {
+                      ...msg,
+                      parts: [
+                        ...existingParts,
+                        {
+                          type: 'action_card',
+                          cardType: 'payment_completed',
+                          ...parsedData,
+                        },
+                      ],
+                    };
+                  }
+                  return msg;
+                }),
+              );
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Streaming error', err);
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === tempAssistantId
+            ? {
+                ...msg,
+                content: 'Execution encountered an unexpected error. Please try again.',
+              }
+            : msg,
+        ),
+      );
+    } finally {
+      setIsStreaming(false);
+      // Refresh messages from server to keep database state exact
+      try {
+        const res = await fetch(`/api/v1/chat/threads/${threadId}`);
+        if (res.ok) {
+          const data = await res.json();
+          setMessages(data.messages || []);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  };
+  triggerStreamingRef.current = triggerStreamingExecution;
+
+  const handleSendPrompt = async () => {
+    if (!inputText.trim() || isStreaming) return;
+    const textToSend = inputText.trim();
+    setInputText('');
+
+    const newMsg: ChatMessageItem = {
+      id: `usr-${Date.now()}`,
+      role: 'user',
+      content: textToSend,
+      createdAt: new Date().toISOString(),
+    };
+
+    setMessages((prev) => [...prev, newMsg]);
+    await triggerStreamingExecution(textToSend);
+  };
+
+  const handleApprove = async (approvalId: string, cardData?: Record<string, unknown>) => {
+    setActionLoadingId(approvalId);
+    try {
+      const res = await fetch(`/api/v1/approvals/${approvalId}/decision`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'approve',
+          approvalRequestId: (cardData?.approvalRequestId as string) || undefined,
+          purchaseIntentId: (cardData?.purchaseIntentId as string) || undefined,
+        }),
+      });
+
+      if (!res.ok) {
+        const errJson = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+        const errMsg =
+          (errJson.error as string) || (errJson.message as string) || 'Approval decision failed';
+
+        if (
+          res.status === 409 ||
+          errMsg.includes('already been completed') ||
+          errMsg.includes('already decided')
+        ) {
+          toast.info('Transaction already approved and captured.');
+          setActionCardState((prev) => ({ ...prev, [approvalId]: 'approved' }));
+          setActionCardDetails((prev) => ({
+            ...prev,
+            [approvalId]: {
+              ...(cardData || {}),
+              status: 'completed',
+            },
+          }));
+          return;
+        }
+
+        toast.error(errMsg);
+        return;
+      }
+
+      const resJson = await res.json();
+      const captureResult = (resJson.result || resJson) as Record<string, unknown>;
+
+      toast.success('Payment approved and captured via PayPal Sandbox.');
+      setActionCardState((prev) => ({ ...prev, [approvalId]: 'approved' }));
+      setActionCardDetails((prev) => {
+        const base = prev[approvalId] || cardData || {};
+        return {
+          ...prev,
+          [approvalId]: {
+            ...base,
+            ...captureResult,
+            paypalCaptureId:
+              (captureResult.paypalCaptureId as string) ||
+              (resJson.paypalCaptureId as string) ||
+              (base.paypalCaptureId as string) ||
+              'SANDBOX_CAPTURED',
+            status: 'completed',
+          },
+        };
+      });
+    } catch (err) {
+      console.error('Approval execution error:', err);
+      toast.error('An unexpected error occurred during approval.');
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  const handleDecline = async (approvalId: string, cardData?: Record<string, unknown>) => {
+    setActionLoadingId(approvalId);
+    try {
+      const res = await fetch(`/api/v1/approvals/${approvalId}/decision`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'reject',
+          approvalRequestId: (cardData?.approvalRequestId as string) || undefined,
+          purchaseIntentId: (cardData?.purchaseIntentId as string) || undefined,
+        }),
+      });
+
+      if (!res.ok) {
+        const errJson = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+        const errMsg =
+          (errJson.error as string) || (errJson.message as string) || 'Decline decision failed';
+
+        if (res.status === 409) {
+          setActionCardState((prev) => ({ ...prev, [approvalId]: 'rejected' }));
+          return;
+        }
+
+        toast.error(errMsg);
+        return;
+      }
+
+      toast.info('Purchase declined by operator.');
+      setActionCardState((prev) => ({ ...prev, [approvalId]: 'rejected' }));
+    } catch (err) {
+      console.error('Decline execution error:', err);
+      toast.error('An unexpected error occurred while declining.');
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  return (
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
+      {/* Message Feed Area */}
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-6">
+          {messages.map((message) => {
+            const isUser = message.role === 'user';
+
+            if (isUser) {
+              return (
+                <div key={message.id} className="flex w-full justify-end gap-3">
+                  <div className="bg-primary text-primary-foreground max-w-[85%] rounded-2xl px-4 py-3 text-sm shadow-sm sm:max-w-xl">
+                    <p className="whitespace-pre-wrap">{message.content}</p>
+                  </div>
+                  <div className="bg-muted text-muted-foreground flex size-8 shrink-0 items-center justify-center rounded-full border">
+                    <User className="size-4" />
+                  </div>
+                </div>
+              );
+            }
+
+            // Extract reasoning steps from message parts or current streaming
+            const messageReasoningSteps: ReasoningStep[] =
+              message.parts
+                ?.filter((p) => p.type === 'reasoning_step')
+                .map((p, idx) => ({
+                  id: (p.id as string) || `part-${idx}`,
+                  text:
+                    (p.thought as string) ||
+                    (p.text as string) ||
+                    (p.toolName as string) ||
+                    'Step executed',
+                  timestamp: (p.timestamp as string) || undefined,
+                })) || (isStreaming && streamingReasoning.length > 0 ? streamingReasoning : []);
+
+            const actionCards = message.parts?.filter((p) => p.type === 'action_card') || [];
+
+            return (
+              <div key={message.id} className="flex w-full items-start gap-3">
+                <div className="bg-primary/10 text-primary border-primary/20 flex size-8 shrink-0 items-center justify-center rounded-full border">
+                  <Bot className="size-4" />
+                </div>
+
+                <div className="min-w-0 flex-1 space-y-4">
+                  {/* Reasoning Accordion Drawer */}
+                  {messageReasoningSteps.length > 0 && (
+                    <Reasoning
+                      steps={messageReasoningSteps}
+                      defaultOpen={isStreaming}
+                      isStreaming={isStreaming}
+                      className="border-border/70 bg-card/60"
+                      agentName={thread?.agent?.name || 'Buyer Agent'}
+                    />
+                  )}
+
+                  {/* Main Text Content */}
+                  {message.content && (
+                    <div className="bg-card rounded-xl border p-4 text-sm leading-relaxed shadow-xs">
+                      <MarkdownContent content={message.content} />
+                    </div>
+                  )}
+
+                  {/* Inline Action Cards (Generative UI) */}
+                  {actionCards.map((card, idx) => {
+                    const cardType = card.cardType as string;
+                    const approvalId =
+                      (card.approvalRequestId as string) ||
+                      (card.purchaseIntentId as string) ||
+                      `card-${idx}`;
+                    const currentApprovalState =
+                      actionCardState[approvalId] ||
+                      (cardType === 'payment_completed' || card.status === 'completed'
+                        ? 'approved'
+                        : card.status === 'rejected'
+                          ? 'rejected'
+                          : 'pending');
+                    const details = actionCardDetails[approvalId] || card;
+
+                    if (cardType === 'approval_required' || currentApprovalState === 'pending') {
+                      if (currentApprovalState === 'approved') {
+                        return <PaymentReceiptCard key={approvalId} details={details} />;
+                      }
+
+                      if (currentApprovalState === 'rejected') {
+                        return <PurchaseDeclinedCard key={approvalId} details={details} />;
+                      }
+
+                      const amountFormatted = `$${((Number(details.amountCents) || 0) / 100).toFixed(2)}`;
+                      const itemName = cleanItemName(details.itemDescription);
+                      const ruleExplanation = formatRuleTrigger(details.ruleTriggered);
+                      const thresholdText = details.thresholdCents
+                        ? `$${(Number(details.thresholdCents) / 100).toFixed(2)}`
+                        : '$50.00';
+
+                      return (
+                        <Card
+                          key={approvalId}
+                          className="bg-card rounded-xl border border-amber-500/40 shadow-xs"
+                        >
+                          <CardHeader className="pb-3">
+                            <div className="flex items-center justify-between">
+                              <Badge
+                                variant="outline"
+                                className="gap-1.5 border-amber-500/40 bg-amber-500/10 text-xs font-medium text-amber-700 dark:text-amber-400"
+                              >
+                                <AlertTriangle className="size-3.5" />
+                                <span>Approval Required</span>
+                              </Badge>
+                              <span className="text-muted-foreground font-mono text-xs">
+                                Threshold: {thresholdText}
+                              </span>
+                            </div>
+                            <CardTitle className="text-foreground pt-2 text-base font-semibold tracking-tight">
+                              {itemName}
+                            </CardTitle>
+                            <CardDescription className="text-xs">
+                              Merchant:{' '}
+                              <span className="text-foreground font-medium">
+                                {String(details.merchantName || 'Sandbox Digital Marketplace')}
+                              </span>
+                            </CardDescription>
+                          </CardHeader>
+                          <CardContent className="space-y-3 pb-3">
+                            <div className="bg-muted/40 divide-border/60 divide-y rounded-lg border text-xs">
+                              <div className="flex items-center justify-between px-3.5 py-2.5">
+                                <span className="text-muted-foreground">Payment Gateway</span>
+                                <span className="text-foreground font-medium">PayPal Sandbox</span>
+                              </div>
+                              <div className="flex items-center justify-between px-3.5 py-2.5">
+                                <span className="text-muted-foreground">Amount to Authorize</span>
+                                <span className="text-foreground font-mono text-base font-bold">
+                                  {amountFormatted} USD
+                                </span>
+                              </div>
+                            </div>
+                            <p className="text-muted-foreground text-xs leading-relaxed">
+                              {ruleExplanation}
+                            </p>
+                          </CardContent>
+                          <CardFooter className="flex gap-2.5 border-t pt-3">
+                            <Button
+                              variant="default"
+                              size="sm"
+                              className="flex-1 gap-1.5 bg-emerald-600 font-medium text-white shadow-xs hover:bg-emerald-700 active:bg-emerald-800"
+                              disabled={actionLoadingId === approvalId}
+                              onClick={() => handleApprove(approvalId, card)}
+                            >
+                              {actionLoadingId === approvalId ? (
+                                <Loader2 className="size-3.5 animate-spin" />
+                              ) : (
+                                <ShieldCheck className="size-3.5" />
+                              )}
+                              <span>Approve Payment ({amountFormatted})</span>
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-muted-foreground hover:border-destructive hover:bg-destructive/10 hover:text-destructive flex-1 font-medium"
+                              disabled={actionLoadingId === approvalId}
+                              onClick={() => handleDecline(approvalId, card)}
+                            >
+                              <span>Decline</span>
+                            </Button>
+                          </CardFooter>
+                        </Card>
+                      );
+                    }
+
+                    if (cardType === 'payment_completed') {
+                      return <PaymentReceiptCard key={approvalId} details={details} />;
+                    }
+
+                    return null;
+                  })}
+                </div>
+              </div>
+            );
+          })}
+          <div ref={messagesEndRef} className="h-4" />
+        </div>
+      </div>
+
+      {/* Bottom Fixed Prompt Bar */}
+      <div className="bg-background/95 shrink-0 border-t py-3 backdrop-blur sm:py-4">
+        <div className="mx-auto w-full max-w-3xl px-4">
+          <PromptInput
+            value={inputText}
+            onChange={setInputText}
+            onSubmit={handleSendPrompt}
+            isLoading={isStreaming}
+            onStop={() => setIsStreaming(false)}
+            placeholder="Assign next commerce step or ask about budget headroom..."
+            hintText="Enter to submit"
+            modelSlot={
+              <Badge
+                variant="outline"
+                className="text-muted-foreground bg-muted/40 border-border/60 shrink-0 gap-1 rounded-full px-2 py-0.5 font-mono text-[11px]"
+              >
+                <Sparkles className="text-primary size-3" />
+                <span>{thread?.agent?.model || 'gemini-2.5-flash'}</span>
+              </Badge>
+            }
+          />
+        </div>
+      </div>
+    </div>
+  );
+}

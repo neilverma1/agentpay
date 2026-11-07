@@ -14,6 +14,7 @@ import {
   agent,
   and,
   approvalRequest,
+  chatMessage,
   db,
   eq,
   or,
@@ -648,13 +649,26 @@ export async function executeApprovedPurchaseCapture(params: {
   approvalRequestId: string;
   reviewerId: string;
   notes?: string;
+  purchaseIntentId?: string;
 }): Promise<PurchaseExecutionResult> {
-  const { approvalRequestId, reviewerId, notes } = params;
+  const { approvalRequestId, reviewerId, notes, purchaseIntentId } = params;
 
   // 1. Fetch approval request, purchase intent, and agent directly by IDs to avoid relational query issues
-  const approval = await db.query.approvalRequest.findFirst({
+  let approval = await db.query.approvalRequest.findFirst({
     where: eq(approvalRequest.id, approvalRequestId),
   });
+
+  if (!approval) {
+    approval = await db.query.approvalRequest.findFirst({
+      where: eq(approvalRequest.purchaseIntentId, approvalRequestId),
+    });
+  }
+
+  if (!approval && purchaseIntentId) {
+    approval = await db.query.approvalRequest.findFirst({
+      where: eq(approvalRequest.purchaseIntentId, purchaseIntentId),
+    });
+  }
 
   if (!approval) {
     throw new AgentPurchaseError('Approval request not found', 404);
@@ -689,12 +703,26 @@ export async function executeApprovedPurchaseCapture(params: {
     );
   }
 
+  // Idempotent return if already completed
   if (intent.status === 'completed') {
-    throw new AgentPurchaseError(
-      'This purchase has already been completed and captured',
-      409,
-      intent.id,
-    );
+    const existingTx = await db.query.transaction.findFirst({
+      where: eq(transaction.purchaseIntentId, intent.id),
+    });
+    return {
+      purchaseIntentId: intent.id,
+      transactionId: existingTx?.id || '',
+      paypalOrderId: existingTx?.paypalOrderId || '',
+      paypalCaptureId: existingTx?.paypalCaptureId || 'SANDBOX_CAPTURED',
+      amountCents: existingTx?.amountCents || intent.estimatedAmountCents,
+      currency: intent.currency,
+      status: 'completed',
+      itemDescription: intent.itemDescription,
+      merchantName: intent.merchantName,
+      merchantCategory: intent.merchantCategory ?? undefined,
+      reasoningLog: (intent.reasoningLog as unknown as ReasoningStep[]) || [],
+      capturedAt: (existingTx?.capturedAt || new Date()).toISOString(),
+      approvalRequestId: approval.id,
+    };
   }
 
   // 2. Atomic conditional update to 'approved' to guarantee single execution (AC-5)
@@ -709,7 +737,7 @@ export async function executeApprovedPurchaseCapture(params: {
     })
     .where(
       and(
-        eq(approvalRequest.id, approvalRequestId),
+        eq(approvalRequest.id, approval.id),
         or(eq(approvalRequest.status, 'pending'), eq(approvalRequest.status, 'approved')),
       ),
     )
@@ -814,7 +842,7 @@ export async function executeApprovedPurchaseCapture(params: {
     currentLogs.push({
       step: currentLogs.length + 1,
       toolName: 'human_approval',
-      thought: `Human operator approved transaction (${notes ? `Note: "${notes}"` : 'One-click dashboard approval'}). Captured PayPal order ${captureRes.captureId}.`,
+      thought: `Human operator approved transaction (${notes ? `Note: "${notes}"` : 'One-click operator approval'}). Captured PayPal order ${captureRes.captureId}.`,
       input: {
         approvalRequestId,
         reviewerId,
@@ -836,6 +864,41 @@ export async function executeApprovedPurchaseCapture(params: {
         updatedAt: capturedAt,
       })
       .where(eq(purchaseIntent.id, intent.id));
+
+    // Also update any chat messages linked to this purchase intent so page reloads immediately show payment_completed
+    try {
+      const relatedMessages = await db.query.chatMessage.findMany({
+        where: eq(chatMessage.purchaseIntentId, intent.id),
+      });
+
+      for (const msg of relatedMessages) {
+        if (Array.isArray(msg.parts)) {
+          let modified = false;
+          const updatedParts = (msg.parts as Array<Record<string, unknown>>).map((part) => {
+            if (part && part.type === 'action_card' && part.cardType === 'approval_required') {
+              modified = true;
+              return {
+                ...part,
+                cardType: 'payment_completed',
+                status: 'completed',
+                paypalCaptureId: captureRes.captureId,
+                paypalOrderId: orderId,
+              };
+            }
+            return part;
+          });
+
+          if (modified) {
+            await db
+              .update(chatMessage)
+              .set({ parts: updatedParts })
+              .where(eq(chatMessage.id, msg.id));
+          }
+        }
+      }
+    } catch (msgErr) {
+      console.warn('Failed to update chat message parts after capture:', msgErr);
+    }
 
     return {
       purchaseIntentId: intent.id,

@@ -56,9 +56,9 @@ export const pageMetadata = {
     title: 'Web | Fullstack Turborepo Starter Template',
     description: SITE_DESCRIPTION,
   },
-  dashboard: {
-    title: 'Dashboard',
-    description: 'Manage your account and view your dashboard.',
+  chat: {
+    title: 'Agent Chat',
+    description: 'Interactive autonomous agent commerce workspace and purchase missions.',
   },
   audit: {
     title: 'Audit Logs',

@@ -18,9 +18,9 @@ export interface EvaluatePolicyParams {
 }
 
 export const DEFAULT_POLICY_CONFIG = {
-  maxDailySpendCents: 10000, // $100.00 daily spend cap
-  singleTransactionLimitCents: 5000, // $50.00 single transaction ceiling
-  requireApprovalAboveCents: 2500, // $25.00 human approval trigger threshold
+  maxDailySpendCents: 50000, // $500.00 daily spend cap
+  singleTransactionLimitCents: 50000, // $500.00 single transaction ceiling
+  requireApprovalAboveCents: 5000, // $50.00 human approval trigger threshold
   allowedMerchantCategories: [] as string[], // Empty array allows all non-blocked categories
   blockedMerchantCategories: [
     'gambling',
@@ -30,6 +30,38 @@ export const DEFAULT_POLICY_CONFIG = {
   ] as string[],
   currency: 'USD',
 } as const;
+
+export interface UpdateAgentPolicyParams {
+  agentId: string;
+  maxDailySpendCents?: number;
+  singleTransactionLimitCents?: number;
+  requireApprovalAboveCents?: number;
+  blockedMerchantCategories?: string[];
+  allowedMerchantCategories?: string[];
+}
+
+/**
+ * Updates an agent spending policy with new limits or category restrictions.
+ */
+export async function updateAgentPolicy(params: UpdateAgentPolicyParams): Promise<AgentPolicy> {
+  const { agentId, ...updates } = params;
+  await getOrCreateAgentPolicy(agentId);
+
+  const [updated] = await db
+    .update(agentPolicy)
+    .set({
+      ...updates,
+      updatedAt: new Date(),
+    })
+    .where(eq(agentPolicy.agentId, agentId))
+    .returning();
+
+  if (!updated) {
+    throw new Error(`Failed to update policy for agent ${agentId}`);
+  }
+
+  return updated;
+}
 
 /**
  * Retrieves the spending policy configured for an agent, or automatically seeds

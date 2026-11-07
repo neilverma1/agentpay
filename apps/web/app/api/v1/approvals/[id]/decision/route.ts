@@ -13,6 +13,7 @@ const decisionSchema = z.object({
   }),
   notes: z.string().max(500).optional(),
   approvalRequestId: z.string().optional(),
+  purchaseIntentId: z.string().optional(),
 });
 
 export async function POST(
@@ -46,16 +47,23 @@ export async function POST(
       approvalRequestId = resolved?.id;
     }
 
-    if (!approvalRequestId) {
+    if (!approvalRequestId || approvalRequestId.startsWith('card-')) {
       const pathname = req.nextUrl?.pathname || new URL(req.url).pathname;
       const match = pathname.match(/\/approvals\/([^/]+)\/decision/);
-      if (match?.[1]) {
+      if (match?.[1] && !match[1].startsWith('card-')) {
         approvalRequestId = match[1];
       }
     }
 
-    if (!approvalRequestId && typeof rawBody.approvalRequestId === 'string') {
-      approvalRequestId = rawBody.approvalRequestId;
+    if (!approvalRequestId || approvalRequestId.startsWith('card-')) {
+      if (
+        typeof rawBody.approvalRequestId === 'string' &&
+        !rawBody.approvalRequestId.startsWith('card-')
+      ) {
+        approvalRequestId = rawBody.approvalRequestId;
+      } else if (typeof rawBody.purchaseIntentId === 'string') {
+        approvalRequestId = rawBody.purchaseIntentId;
+      }
     }
 
     if (!approvalRequestId) {
@@ -65,13 +73,14 @@ export async function POST(
       );
     }
 
-    const { action, notes } = validated.data;
+    const { action, notes, purchaseIntentId } = validated.data;
 
     if (action === 'approve') {
       const result = await executeApprovedPurchaseCapture({
         approvalRequestId,
         reviewerId: session.user.id,
         notes,
+        purchaseIntentId,
       });
 
       return NextResponse.json(

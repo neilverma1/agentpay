@@ -17,7 +17,7 @@ vi.mock('@/hooks/auth/use-sign-up', () => ({
 
 vi.mock('next/navigation', () => ({
   useSearchParams: () => ({
-    get: (key: string) => (key === 'callbackUrl' ? '/dashboard' : null),
+    get: (key: string) => (key === 'callbackUrl' ? '/chat' : null),
   }),
 }));
 

@@ -21,7 +21,7 @@ import { toast } from 'sonner';
 export function TwoFactorVerification() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get('callbackUrl') || '/';
+  const callbackUrl = searchParams.get('callbackUrl') || '/chat';
 
   const [code, setCode] = useState('');
   const [useBackupCode, setUseBackupCode] = useState(false);

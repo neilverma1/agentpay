@@ -13,7 +13,7 @@ import { useForm } from 'react-hook-form';
 
 export function SignInForm() {
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get('callbackUrl') ?? '/';
+  const callbackUrl = searchParams.get('callbackUrl') ?? '/chat';
   const { mutate, isPending } = useSignIn(callbackUrl);
 
   const form = useForm<SignInFormValues>({

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { AGENT_AUDIT_ACTIONS, AGENT_STATUSES } from './agent';
+import { CHAT_MESSAGE_ROLES, CHAT_THREAD_STATUSES } from './chat';
 import {
   APPROVAL_REQUEST_STATUSES,
   PURCHASE_INTENT_STATUSES,
@@ -13,6 +14,8 @@ export const purchaseIntentStatusSchema = z.enum(PURCHASE_INTENT_STATUSES);
 export const approvalRequestStatusSchema = z.enum(APPROVAL_REQUEST_STATUSES);
 export const transactionStatusSchema = z.enum(TRANSACTION_STATUSES);
 export const webhookEventStatusSchema = z.enum(WEBHOOK_EVENT_STATUSES);
+export const chatThreadStatusSchema = z.enum(CHAT_THREAD_STATUSES);
+export const chatMessageRoleSchema = z.enum(CHAT_MESSAGE_ROLES);
 
 export const insertAgentSchema = z.object({
   userId: z.string().min(1, 'User identifier is required'),
@@ -231,3 +234,44 @@ export const selectWebhookEventSchema = z.object({
 
 export type InsertWebhookEventInput = z.infer<typeof insertWebhookEventSchema>;
 export type SelectWebhookEventOutput = z.infer<typeof selectWebhookEventSchema>;
+
+export const insertChatThreadSchema = z.object({
+  userId: z.string().min(1, 'User identifier is required'),
+  agentId: z.string().uuid('Valid agent identifier is required'),
+  title: z.string().max(255).default('New Commerce Mission'),
+  status: chatThreadStatusSchema.default('active'),
+});
+
+export const selectChatThreadSchema = z.object({
+  id: z.string().uuid(),
+  userId: z.string(),
+  agentId: z.string().uuid(),
+  title: z.string(),
+  status: chatThreadStatusSchema,
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+
+export type InsertChatThreadInput = z.infer<typeof insertChatThreadSchema>;
+export type SelectChatThreadOutput = z.infer<typeof selectChatThreadSchema>;
+
+export const insertChatMessageSchema = z.object({
+  threadId: z.string().uuid('Valid thread identifier is required'),
+  role: chatMessageRoleSchema,
+  content: z.string().min(1, 'Content is required'),
+  parts: z.array(z.record(z.string(), z.unknown())).default([]),
+  purchaseIntentId: z.string().uuid().optional().nullable(),
+});
+
+export const selectChatMessageSchema = z.object({
+  id: z.string().uuid(),
+  threadId: z.string().uuid(),
+  role: chatMessageRoleSchema,
+  content: z.string(),
+  parts: z.array(z.record(z.string(), z.unknown())),
+  purchaseIntentId: z.string().uuid().nullable(),
+  createdAt: z.date(),
+});
+
+export type InsertChatMessageInput = z.infer<typeof insertChatMessageSchema>;
+export type SelectChatMessageOutput = z.infer<typeof selectChatMessageSchema>;

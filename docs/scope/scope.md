@@ -8,17 +8,17 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 
 ## At a glance
 
-| #   | Feature                                    | Phase      | Status      |
-| --- | ------------------------------------------ | ---------- | ----------- |
-| 1   | Stack and architecture                     | Foundation | done        |
-| 2   | Coding standards and tooling               | Foundation | done        |
-| 3   | Core data model                            | Foundation | done        |
-| 4   | Design system and UI foundation            | Foundation | done        |
-| 5   | Core purchase loop                         | Slice 1    | done        |
-| 6   | Spending guardrails and approval threshold | Slice 2    | done        |
-| 7   | Real time audit telemetry grid             | Slice 3    | done        |
-| 8   | Webhook verification and state sync        | Slice 4    | done        |
-| 9   | Interactive agent chat threads             | Slice 5    | in-progress |
+| #   | Feature                                    | Phase      | Status |
+| --- | ------------------------------------------ | ---------- | ------ |
+| 1   | Stack and architecture                     | Foundation | done   |
+| 2   | Coding standards and tooling               | Foundation | done   |
+| 3   | Core data model                            | Foundation | done   |
+| 4   | Design system and UI foundation            | Foundation | done   |
+| 5   | Core purchase loop                         | Slice 1    | done   |
+| 6   | Spending guardrails and approval threshold | Slice 2    | done   |
+| 7   | Real time audit telemetry grid             | Slice 3    | done   |
+| 8   | Webhook verification and state sync        | Slice 4    | done   |
+| 9   | Interactive agent chat threads             | Slice 5    | done   |
 
 ## Foundations
 
@@ -130,19 +130,19 @@ spec [0007](../specs/0007-webhook-verification-and-state-sync/index.md) · code 
 
 ## Slice 5: Interactive agent chat threads
 
-### 9. Interactive agent chat threads · in-progress
+### 9. Interactive agent chat threads
 
 Build dedicated `/chat` and `/chat/[id]` routes with database backed conversation persistence, real time streaming reasoning, generative PayPal purchase cards, and inline human in the loop approvals. **Done when:** an operator can start a new purchase mission at `/chat`, navigate persistent threads at `/chat/[id]`, watch the agent stream tool traces, and approve or decline paused transactions directly in the conversation feed.
 
-spec [0008](../specs/0008-interactive-agent-chat-threads/index.md)
+spec [0008](../specs/0008-interactive-agent-chat-threads/index.md) · code in [apps/web/](../../apps/web/), [packages/db/](../../packages/db/)
 
 - [x] Design it (spec): `/architect interactive agent chat threads`
-- [ ] Build it: `/develop interactive agent chat threads`
-  - [ ] Schema migration for chat_thread and chat_message tables in packages/db (AC-7, AC-8)
-  - [ ] Chat thread CRUD API and /api/v1/chat/[id] streaming route with AI SDK (AC-2, AC-3, AC-8)
-  - [ ] New mission launcher view at /chat with prompt suggestions and PromptInput (AC-1, AC-2)
-  - [ ] Persistent thread view at /chat/[id] with reasoning drawers and tool traces (AC-3, AC-4, AC-7)
-  - [ ] Inline approval confirmation card with live PayPal payment capture (AC-5, AC-6)
+- [x] Build it: `/develop interactive agent chat threads`
+  - [x] Schema migration for chat_thread and chat_message tables in packages/db (AC-7, AC-8)
+  - [x] Chat thread CRUD API and /api/v1/chat/[id] streaming route with AI SDK (AC-2, AC-3, AC-8)
+  - [x] New mission launcher view at /chat with prompt suggestions and PromptInput (AC-1, AC-2)
+  - [x] Persistent thread view at /chat/[id] with reasoning drawers and tool traces (AC-3, AC-4, AC-7)
+  - [x] Inline approval confirmation card with live PayPal payment capture (AC-5, AC-6)
 
 ## Deferred
 

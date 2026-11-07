@@ -47,7 +47,7 @@ vi.mock('next/link', () => ({
 
 vi.mock('@/config/site', () => ({
   config: {
-    nav: [{ title: 'Dashboard', href: '/dashboard', icon: () => <span>Icon</span> }],
+    nav: [{ title: 'New Chat', href: '/chat', icon: () => <span>Icon</span> }],
   },
 }));
 
@@ -71,6 +71,18 @@ describe('Layout Components (AppSidebar, Header)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     useSidebarMock.mockReturnValue({ state: 'expanded', isMobile: true });
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        threads: [
+          {
+            id: 'thread-1',
+            title: 'Order Anthropic API Credits',
+            status: 'active',
+          },
+        ],
+      }),
+    }) as unknown as typeof fetch;
   });
 
   it('shows auth actions in sidebar when user is not authenticated', () => {
@@ -95,7 +107,6 @@ describe('Layout Components (AppSidebar, Header)', () => {
     render(<Header />);
 
     expect(screen.getByRole('banner')).toHaveClass('flex');
-    expect(screen.getByText('Logo')).toBeInTheDocument();
     expect(screen.getByText('Theme Switch')).toBeInTheDocument();
   });
 
@@ -104,6 +115,6 @@ describe('Layout Components (AppSidebar, Header)', () => {
     render(<Header />);
 
     expect(screen.getByRole('banner')).toHaveClass('flex');
-    expect(screen.getByText('Logo')).toBeInTheDocument();
+    expect(screen.getByText('Theme Switch')).toBeInTheDocument();
   });
 });

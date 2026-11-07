@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { useVerification } from './use-verification';
 
-const DEFAULT_CALLBACK_URL = '/';
+const DEFAULT_CALLBACK_URL = '/chat';
 
 export function useSignIn(callbackUrl: string = DEFAULT_CALLBACK_URL) {
   const router = useRouter();

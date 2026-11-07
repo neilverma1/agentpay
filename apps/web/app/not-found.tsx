@@ -9,7 +9,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from '@workspace/ui/components/empty';
-import { ArrowLeftIcon, Home } from 'lucide-react';
+import { ArrowLeftIcon, MessageSquare } from 'lucide-react';
 import Link from 'next/link';
 
 export const metadata = generatePageMetadata(
@@ -44,9 +44,9 @@ export default function NotFound() {
               </Link>
             </Button>
             <Button asChild variant="outline" size="lg" className="rounded-xl">
-              <Link href="/dashboard">
-                <Home />
-                Go to Dashboard
+              <Link href="/chat">
+                <MessageSquare />
+                Go to Agent Chat
               </Link>
             </Button>
           </div>

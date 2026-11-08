@@ -120,7 +120,9 @@ export function ChatThreadView({ threadId }: ChatThreadViewProps) {
         const data = await res.json();
         if (data?.policy) setPolicy(data.policy);
       }
-    } catch {}
+    } catch {
+      // Ignore background policy polling errors
+    }
   }, []);
 
   React.useEffect(() => {

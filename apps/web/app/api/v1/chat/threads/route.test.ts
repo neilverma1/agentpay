@@ -54,7 +54,7 @@ describe('Chat Threads API (/api/v1/chat/threads) (AC-1, AC-2, AC-8)', () => {
   it('returns HTTP 401 when request is unauthenticated (AC-8)', async () => {
     vi.mocked(requireAuth).mockResolvedValue({
       error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }),
-      session: undefined as any,
+      session: undefined,
     });
 
     const req = new NextRequest('http://localhost:3000/api/v1/chat/threads', {
@@ -68,7 +68,7 @@ describe('Chat Threads API (/api/v1/chat/threads) (AC-1, AC-2, AC-8)', () => {
   it('returns thread list for authenticated user (AC-1)', async () => {
     vi.mocked(requireAuth).mockResolvedValue({
       error: null,
-      session: { user: { id: 'usr-123', email: 'test@example.com' } } as any,
+      session: { user: { id: 'usr-123', email: 'test@example.com' } } as never,
     });
 
     const mockThreads = [
@@ -83,7 +83,7 @@ describe('Chat Threads API (/api/v1/chat/threads) (AC-1, AC-2, AC-8)', () => {
       },
     ];
 
-    vi.mocked(db.query.chatThread.findMany).mockResolvedValue(mockThreads as any);
+    vi.mocked(db.query.chatThread.findMany).mockResolvedValue(mockThreads as never);
 
     const req = new NextRequest('http://localhost:3000/api/v1/chat/threads', {
       method: 'GET',
@@ -99,14 +99,14 @@ describe('Chat Threads API (/api/v1/chat/threads) (AC-1, AC-2, AC-8)', () => {
   it('creates new thread and initial message on POST (AC-2)', async () => {
     vi.mocked(requireAuth).mockResolvedValue({
       error: null,
-      session: { user: { id: 'usr-123', email: 'test@example.com' } } as any,
+      session: { user: { id: 'usr-123', email: 'test@example.com' } } as never,
     });
 
     vi.mocked(db.query.agent.findFirst).mockResolvedValue({
       id: 'agent-001',
       userId: 'usr-123',
       name: 'Test Buyer Agent',
-    } as any);
+    } as never);
 
     const createdThread = {
       id: 'new-thread-101',
@@ -132,7 +132,7 @@ describe('Chat Threads API (/api/v1/chat/threads) (AC-1, AC-2, AC-8)', () => {
       values: vi.fn().mockReturnValue({
         returning: returningMock,
       }),
-    } as any);
+    } as never);
 
     const req = new NextRequest('http://localhost:3000/api/v1/chat/threads', {
       method: 'POST',

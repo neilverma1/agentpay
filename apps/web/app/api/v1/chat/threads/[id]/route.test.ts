@@ -47,10 +47,10 @@ describe('Chat Thread Detail & Delete API (/api/v1/chat/threads/[id]) (AC-7, AC-
   it('returns HTTP 404 when thread does not exist or belongs to another user (AC-8)', async () => {
     vi.mocked(requireAuth).mockResolvedValue({
       error: null,
-      session: { user: { id: 'usr-123' } } as any,
+      session: { user: { id: 'usr-123' } } as never,
     });
 
-    vi.mocked(db.query.chatThread.findFirst).mockResolvedValue(null as any);
+    vi.mocked(db.query.chatThread.findFirst).mockResolvedValue(undefined);
 
     const req = new NextRequest('http://localhost:3000/api/v1/chat/threads/th-404', {
       method: 'GET',
@@ -63,7 +63,7 @@ describe('Chat Thread Detail & Delete API (/api/v1/chat/threads/[id]) (AC-7, AC-
   it('returns thread and ordered messages when owned by user (AC-7)', async () => {
     vi.mocked(requireAuth).mockResolvedValue({
       error: null,
-      session: { user: { id: 'usr-123' } } as any,
+      session: { user: { id: 'usr-123' } } as never,
     });
 
     const mockThread = {
@@ -77,7 +77,7 @@ describe('Chat Thread Detail & Delete API (/api/v1/chat/threads/[id]) (AC-7, AC-
       ],
     };
 
-    vi.mocked(db.query.chatThread.findFirst).mockResolvedValue(mockThread as any);
+    vi.mocked(db.query.chatThread.findFirst).mockResolvedValue(mockThread as never);
 
     const req = new NextRequest('http://localhost:3000/api/v1/chat/threads/th-100', {
       method: 'GET',
@@ -93,13 +93,13 @@ describe('Chat Thread Detail & Delete API (/api/v1/chat/threads/[id]) (AC-7, AC-
   it('deletes thread on DELETE request (AC-8)', async () => {
     vi.mocked(requireAuth).mockResolvedValue({
       error: null,
-      session: { user: { id: 'usr-123' } } as any,
+      session: { user: { id: 'usr-123' } } as never,
     });
 
     vi.mocked(db.query.chatThread.findFirst).mockResolvedValue({
       id: 'th-100',
       userId: 'usr-123',
-    } as any);
+    } as never);
 
     const req = new NextRequest('http://localhost:3000/api/v1/chat/threads/th-100', {
       method: 'DELETE',
@@ -114,14 +114,14 @@ describe('Chat Thread Detail & Delete API (/api/v1/chat/threads/[id]) (AC-7, AC-
   it('updates thread title on PATCH request', async () => {
     vi.mocked(requireAuth).mockResolvedValue({
       error: null,
-      session: { user: { id: 'usr-123' } } as any,
+      session: { user: { id: 'usr-123' } } as never,
     });
 
     vi.mocked(db.query.chatThread.findFirst).mockResolvedValue({
       id: 'th-100',
       userId: 'usr-123',
       title: 'Old Title',
-    } as any);
+    } as never);
 
     const req = new NextRequest('http://localhost:3000/api/v1/chat/threads/th-100', {
       method: 'PATCH',
@@ -137,7 +137,7 @@ describe('Chat Thread Detail & Delete API (/api/v1/chat/threads/[id]) (AC-7, AC-
   it('rejects invalid title on PATCH request', async () => {
     vi.mocked(requireAuth).mockResolvedValue({
       error: null,
-      session: { user: { id: 'usr-123' } } as any,
+      session: { user: { id: 'usr-123' } } as never,
     });
 
     const req = new NextRequest('http://localhost:3000/api/v1/chat/threads/th-100', {

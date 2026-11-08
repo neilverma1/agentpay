@@ -47,7 +47,7 @@ describe('Agent Policy API (/api/v1/agent/policy)', () => {
   it('returns HTTP 401 when unauthenticated', async () => {
     vi.mocked(requireAuth).mockResolvedValue({
       error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }),
-      session: undefined as any,
+      session: undefined,
     });
 
     const req = new NextRequest('http://localhost:3000/api/v1/agent/policy');
@@ -59,14 +59,14 @@ describe('Agent Policy API (/api/v1/agent/policy)', () => {
   it('returns policy and 24-hour rolling headroom when authenticated', async () => {
     vi.mocked(requireAuth).mockResolvedValue({
       error: null,
-      session: { user: { id: 'usr-1', email: 'user@test.com' } } as any,
+      session: { user: { id: 'usr-1', email: 'user@test.com' } } as never,
     });
 
     vi.mocked(db.query.agent.findFirst).mockResolvedValue({
       id: 'agent-1',
       userId: 'usr-1',
       name: 'Primary Commerce Agent',
-    } as any);
+    } as never);
 
     vi.mocked(getOrCreateAgentPolicy).mockResolvedValue({
       id: 'policy-1',
@@ -79,7 +79,7 @@ describe('Agent Policy API (/api/v1/agent/policy)', () => {
       currency: 'USD',
       createdAt: new Date(),
       updatedAt: new Date(),
-    } as any);
+    } as never);
 
     vi.mocked(getAgentSpentLast24Hours).mockResolvedValue(1000); // $10 spent
 
@@ -96,13 +96,13 @@ describe('Agent Policy API (/api/v1/agent/policy)', () => {
   it('updates policy with valid spending limits', async () => {
     vi.mocked(requireAuth).mockResolvedValue({
       error: null,
-      session: { user: { id: 'usr-1', email: 'user@test.com' } } as any,
+      session: { user: { id: 'usr-1', email: 'user@test.com' } } as never,
     });
 
     vi.mocked(db.query.agent.findFirst).mockResolvedValue({
       id: 'agent-1',
       userId: 'usr-1',
-    } as any);
+    } as never);
 
     vi.mocked(updateAgentPolicy).mockResolvedValue({
       id: 'policy-1',
@@ -115,7 +115,7 @@ describe('Agent Policy API (/api/v1/agent/policy)', () => {
       currency: 'USD',
       createdAt: new Date(),
       updatedAt: new Date(),
-    } as any);
+    } as never);
 
     vi.mocked(getAgentSpentLast24Hours).mockResolvedValue(0);
 
@@ -138,13 +138,13 @@ describe('Agent Policy API (/api/v1/agent/policy)', () => {
   it('rejects approval threshold exceeding max daily spend', async () => {
     vi.mocked(requireAuth).mockResolvedValue({
       error: null,
-      session: { user: { id: 'usr-1', email: 'user@test.com' } } as any,
+      session: { user: { id: 'usr-1', email: 'user@test.com' } } as never,
     });
 
     vi.mocked(db.query.agent.findFirst).mockResolvedValue({
       id: 'agent-1',
       userId: 'usr-1',
-    } as any);
+    } as never);
 
     const req = new NextRequest('http://localhost:3000/api/v1/agent/policy', {
       method: 'PATCH',
@@ -163,13 +163,13 @@ describe('Agent Policy API (/api/v1/agent/policy)', () => {
   it('rejects limits exceeding $10,000.00 ceiling', async () => {
     vi.mocked(requireAuth).mockResolvedValue({
       error: null,
-      session: { user: { id: 'usr-1', email: 'user@test.com' } } as any,
+      session: { user: { id: 'usr-1', email: 'user@test.com' } } as never,
     });
 
     vi.mocked(db.query.agent.findFirst).mockResolvedValue({
       id: 'agent-1',
       userId: 'usr-1',
-    } as any);
+    } as never);
 
     const req = new NextRequest('http://localhost:3000/api/v1/agent/policy', {
       method: 'PATCH',

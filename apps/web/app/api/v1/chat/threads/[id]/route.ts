@@ -1,6 +1,11 @@
 import { requireAuth } from '@/lib/auth-helpers';
 import { and, asc, chatMessage, chatThread, db, eq, inArray, purchaseIntent } from '@workspace/db';
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
+
+const updateThreadSchema = z.object({
+  title: z.string().trim().min(1, 'Title cannot be empty').max(255),
+});
 
 export async function GET(
   req: NextRequest,
@@ -102,6 +107,8 @@ export async function GET(
             return {
               ...part,
               status: 'rejected',
+              rejectionReason:
+                matchedIntent.rejectionReason || (part.rejectionReason as string) || undefined,
             };
           }
 
@@ -152,6 +159,56 @@ export async function DELETE(
     return NextResponse.json({ status: 'deleted', id: threadId });
   } catch (error) {
     console.error('Error deleting chat thread:', error);
+    const message = error instanceof Error ? error.message : 'Internal Server Error';
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+export async function PATCH(
+  req: NextRequest,
+  context?: { params?: Promise<{ id?: string }> | { id?: string } },
+) {
+  try {
+    const { error: authError, session } = await requireAuth(req);
+    if (authError || !session?.user) {
+      return authError || NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const resolvedParams = await context?.params;
+    const threadId = resolvedParams?.id;
+    if (!threadId) {
+      return NextResponse.json({ error: 'Thread identifier is required' }, { status: 400 });
+    }
+
+    const rawBody = await req.json().catch(() => ({}));
+    const validated = updateThreadSchema.safeParse(rawBody);
+    if (!validated.success) {
+      return NextResponse.json(
+        { error: 'Validation failed', issues: validated.error.flatten().fieldErrors },
+        { status: 400 },
+      );
+    }
+
+    const existingThread = await db.query.chatThread.findFirst({
+      where: and(eq(chatThread.id, threadId), eq(chatThread.userId, session.user.id)),
+    });
+
+    if (!existingThread) {
+      return NextResponse.json({ error: 'Thread not found' }, { status: 404 });
+    }
+
+    const [updatedThread] = await db
+      .update(chatThread)
+      .set({
+        title: validated.data.title,
+        updatedAt: new Date(),
+      })
+      .where(eq(chatThread.id, threadId))
+      .returning();
+
+    return NextResponse.json({ thread: updatedThread });
+  } catch (error) {
+    console.error('Error updating chat thread:', error);
     const message = error instanceof Error ? error.message : 'Internal Server Error';
     return NextResponse.json({ error: message }, { status: 500 });
   }

@@ -228,27 +228,8 @@ export function ChatLauncher() {
           onSubmit={() => handleCreateThread()}
           isLoading={isCreating}
           placeholder='Tell the agent what to buy (e.g. "Purchase 2 Anthropic developer API credits for $25.00")...'
-          hintText="Press Enter to launch"
-          modelSlot={
-            <span className="bg-primary/10 text-primary border-primary/20 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium">
-              <Sparkles className="size-3.5" />
-              <span>Gemini 2.5 Flash</span>
-            </span>
-          }
-          budgetSlot={
-            <button
-              type="button"
-              onClick={() => setIsGuardrailsOpen(true)}
-              className="bg-muted/80 text-muted-foreground hover:bg-muted hover:text-foreground border-border/70 hover:border-primary/40 inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-2.5 py-1 font-mono text-xs tabular-nums transition-colors"
-              title="Click to configure agent guardrails and approval threshold"
-            >
-              <ShieldCheck className="size-3.5 text-emerald-500" />
-              <span>
-                Gate: &gt;$
-                {policy ? (policy.requireApprovalAboveCents / 100).toFixed(2) : '50.00'}
-              </span>
-            </button>
-          }
+          hintText="Enter to launch"
+          compact
         />
 
         {/* Quick Prompt Suggestions */}

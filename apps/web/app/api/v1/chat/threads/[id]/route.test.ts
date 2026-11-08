@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { DELETE, GET } from '@/app/api/v1/chat/threads/[id]/route';
+import { DELETE, GET, PATCH } from '@/app/api/v1/chat/threads/[id]/route';
 import { requireAuth } from '@/lib/auth-helpers';
 import { db } from '@workspace/db';
 import { NextRequest } from 'next/server';
@@ -18,6 +18,13 @@ vi.mock('@workspace/db', () => ({
     },
     delete: vi.fn(() => ({
       where: vi.fn().mockResolvedValue({}),
+    })),
+    update: vi.fn(() => ({
+      set: vi.fn(() => ({
+        where: vi.fn(() => ({
+          returning: vi.fn().mockResolvedValue([{ id: 'th-100', title: 'Renamed Mission' }]),
+        })),
+      })),
     })),
   },
   chatThread: {
@@ -102,5 +109,43 @@ describe('Chat Thread Detail & Delete API (/api/v1/chat/threads/[id]) (AC-7, AC-
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(data.status).toBe('deleted');
+  });
+
+  it('updates thread title on PATCH request', async () => {
+    vi.mocked(requireAuth).mockResolvedValue({
+      error: null,
+      session: { user: { id: 'usr-123' } } as any,
+    });
+
+    vi.mocked(db.query.chatThread.findFirst).mockResolvedValue({
+      id: 'th-100',
+      userId: 'usr-123',
+      title: 'Old Title',
+    } as any);
+
+    const req = new NextRequest('http://localhost:3000/api/v1/chat/threads/th-100', {
+      method: 'PATCH',
+      body: JSON.stringify({ title: 'Renamed Mission' }),
+    });
+
+    const res = await PATCH(req, { params: Promise.resolve({ id: 'th-100' }) });
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.thread.title).toBe('Renamed Mission');
+  });
+
+  it('rejects invalid title on PATCH request', async () => {
+    vi.mocked(requireAuth).mockResolvedValue({
+      error: null,
+      session: { user: { id: 'usr-123' } } as any,
+    });
+
+    const req = new NextRequest('http://localhost:3000/api/v1/chat/threads/th-100', {
+      method: 'PATCH',
+      body: JSON.stringify({ title: '   ' }),
+    });
+
+    const res = await PATCH(req, { params: Promise.resolve({ id: 'th-100' }) });
+    expect(res.status).toBe(400);
   });
 });

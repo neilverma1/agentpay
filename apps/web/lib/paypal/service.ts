@@ -158,18 +158,26 @@ export async function createPayPalOrder(params: CreateOrderParams): Promise<Crea
   }
 }
 
-export async function capturePayPalOrder(orderId: string): Promise<CaptureOrderResult> {
+export async function capturePayPalOrder(
+  orderId: string,
+  expectedAmountCents?: number,
+): Promise<CaptureOrderResult> {
   if (isSimulationMode() || orderId.startsWith('SIMULATED-ORDER-')) {
     const simulatedCaptureId = `SIMULATED-CAPTURE-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+    const amountCents = expectedAmountCents ?? 1000;
     return {
       captureId: simulatedCaptureId,
       status: 'COMPLETED',
-      capturedAmountCents: 1000,
+      capturedAmountCents: amountCents,
       rawResponse: {
         id: simulatedCaptureId,
         status: 'COMPLETED',
         mode: 'simulated_sandbox',
         order_id: orderId,
+        amount: {
+          currency_code: 'USD',
+          value: centsToCurrencyString(amountCents),
+        },
       },
     };
   }

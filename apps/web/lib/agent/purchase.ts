@@ -1,3 +1,4 @@
+import { selectOfferForPrompt } from '@/lib/agent/buyer-agent';
 import {
   evaluateSpendingPolicy,
   getAgentSpentLast24Hours,
@@ -6,10 +7,10 @@ import {
 import {
   capturePayPalOrder,
   createPayPalOrder,
+  currencyStringToCents,
   PayPalServiceError,
   sanitizeDetails,
 } from '@/lib/paypal/service';
-import { google } from '@ai-sdk/google';
 import {
   agent,
   and,
@@ -21,8 +22,6 @@ import {
   purchaseIntent,
   transaction,
 } from '@workspace/db';
-import { generateText, tool } from 'ai';
-import { z } from 'zod';
 
 export interface ExecutePurchaseParams {
   agentId: string;
@@ -78,81 +77,6 @@ export class AgentPurchaseError extends Error {
     this.transactionId = transactionId;
     this.details = sanitizeDetails(details);
   }
-}
-
-function parsePromptFallback(prompt: string): {
-  itemDescription: string;
-  merchantName: string;
-  merchantCategory: string;
-  amountCents: number;
-  thought: string;
-} {
-  // Extract amount if present in prompt like "$12", "12 dollars", "$12.50"
-  const dollarMatch =
-    prompt.match(/\$(\d+(\.\d{1,2})?)/) || prompt.match(/(\d+(\.\d{1,2})?)\s*(dollars|usd)/i);
-  let amountCents = 1000; // Default $10.00
-  if (dollarMatch && dollarMatch[1]) {
-    const parsedDollars = parseFloat(dollarMatch[1]);
-    if (!isNaN(parsedDollars) && parsedDollars > 0) {
-      amountCents = Math.round(parsedDollars * 100);
-    }
-  }
-
-  // Extract merchant if user mentioned "from [Merchant]" or "on [Merchant]"
-  const merchantMatch = prompt.match(
-    /(?:from|on|at)\s+([A-Za-z0-9\s]+?)(?:\s+(?:for|to|\$|\d)|$)/i,
-  );
-  const merchantName =
-    merchantMatch && merchantMatch[1]?.trim()
-      ? merchantMatch[1].trim()
-      : 'Sandbox Digital Marketplace';
-
-  // Deduce category if keywords are present
-  const lowerPrompt = prompt.toLowerCase();
-  let merchantCategory = 'cloud_infrastructure';
-  if (
-    lowerPrompt.includes('gambling') ||
-    lowerPrompt.includes('bet') ||
-    lowerPrompt.includes('casino')
-  ) {
-    merchantCategory = 'gambling';
-  } else if (
-    lowerPrompt.includes('crypto') ||
-    lowerPrompt.includes('bitcoin') ||
-    lowerPrompt.includes('token')
-  ) {
-    merchantCategory = 'crypto_exchange';
-  } else if (
-    lowerPrompt.includes('software') ||
-    lowerPrompt.includes('license') ||
-    lowerPrompt.includes('subscription')
-  ) {
-    merchantCategory = 'software_licenses';
-  } else if (
-    lowerPrompt.includes('compute') ||
-    lowerPrompt.includes('cloud') ||
-    lowerPrompt.includes('server') ||
-    lowerPrompt.includes('hosting')
-  ) {
-    merchantCategory = 'cloud_infrastructure';
-  } else if (
-    lowerPrompt.includes('tool') ||
-    lowerPrompt.includes('api') ||
-    lowerPrompt.includes('developer')
-  ) {
-    merchantCategory = 'developer_tools';
-  }
-
-  // Extract description
-  const cleanDescription = prompt.length > 5 ? prompt.slice(0, 100) : 'Digital Compute Voucher';
-
-  return {
-    itemDescription: cleanDescription,
-    merchantName,
-    merchantCategory,
-    amountCents,
-    thought: `Identified purchase goal for ${cleanDescription} at ${merchantName} (${merchantCategory}) for ${(amountCents / 100).toFixed(2)} USD.`,
-  };
 }
 
 export async function executeAgentPurchaseLoop(
@@ -229,91 +153,68 @@ export async function executeAgentPurchaseLoop(
 
   const reasoningLog: ReasoningStep[] = [];
 
-  // 3. Buyer Agent Reasoning via Vercel AI SDK or deterministic fallback
-  let parsedItem = {
-    itemDescription: 'Digital Compute Voucher',
-    merchantName: 'Sandbox Digital Marketplace',
-    merchantCategory: 'cloud_infrastructure',
-    amountCents: 1000,
-    thought: 'Selected standard sandbox compute credit asset for execution.',
-  };
+  // 3. Buyer agent: search the trusted merchant catalog and choose an offer.
+  // Price, merchant and category come from the catalog, never from the model (spec 0009).
+  const selection = await selectOfferForPrompt(prompt);
 
-  const hasGoogleKey = Boolean(process.env.GOOGLE_GENERATIVE_AI_API_KEY);
-
-  if (hasGoogleKey) {
-    try {
-      const result = await generateText({
-        model: google('gemini-2.5-flash'),
-        system: `You are an autonomous buyer agent for AgentPay.
-Your task is to parse purchase goals, determine item details, merchant name, category, and price in cents.
-If price or merchant are omitted, default to sensible sandbox digital assets ($10.00 Digital Compute Voucher from Sandbox Digital Marketplace, category cloud_infrastructure).
-Always invoke the purchaseAsset tool to confirm your decision.`,
-        prompt,
-        tools: {
-          purchaseAsset: tool({
-            description:
-              'Determine the asset, merchant category, and pricing parameters for the purchase',
-            inputSchema: z.object({
-              itemDescription: z.string().describe('Item or asset description'),
-              merchantName: z.string().describe('Merchant or service provider name'),
-              merchantCategory: z
-                .string()
-                .optional()
-                .describe(
-                  'Merchant category, e.g. cloud_infrastructure, developer_tools, software_licenses, digital_goods, gambling, crypto_exchange',
-                ),
-              amountCents: z
-                .number()
-                .int()
-                .positive()
-                .describe('Price in integer cents, e.g. 1000 for $10.00'),
-              reasoning: z.string().describe('Summary of agent evaluation'),
-            }),
-          }),
-        },
-      });
-
-      const toolCall = result.toolCalls?.find((tc) => tc.toolName === 'purchaseAsset');
-      if (toolCall && 'input' in toolCall && toolCall.input) {
-        const toolInput = toolCall.input as {
-          itemDescription?: string;
-          merchantName?: string;
-          merchantCategory?: string;
-          amountCents?: number;
-          reasoning?: string;
-        };
-        parsedItem = {
-          itemDescription: toolInput.itemDescription || parsedItem.itemDescription,
-          merchantName: toolInput.merchantName || parsedItem.merchantName,
-          merchantCategory: toolInput.merchantCategory || parsedItem.merchantCategory,
-          amountCents: toolInput.amountCents || parsedItem.amountCents,
-          thought:
-            toolInput.reasoning ||
-            'Evaluated prompt and confirmed digital asset parameters with Gemini.',
-        };
-      } else {
-        parsedItem = parsePromptFallback(prompt);
-      }
-    } catch {
-      parsedItem = parsePromptFallback(prompt);
-    }
-  } else {
-    parsedItem = parsePromptFallback(prompt);
+  for (const agentStep of selection.steps) {
+    reasoningLog.push({
+      step: reasoningLog.length + 1,
+      ...agentStep,
+      timestamp: new Date().toISOString(),
+    });
   }
 
-  reasoningLog.push({
-    step: 1,
-    toolName: 'parse_intent',
-    thought: parsedItem.thought,
-    input: { prompt },
-    output: {
-      itemDescription: parsedItem.itemDescription,
-      merchantName: parsedItem.merchantName,
-      merchantCategory: parsedItem.merchantCategory,
-      amountCents: parsedItem.amountCents,
-    },
-    timestamp: new Date().toISOString(),
-  });
+  function extractAttemptedAmountCents(text: string): number {
+    const match = text.match(/\$\s*([\d,]+(?:\.\d{1,2})?)/);
+    if (!match || !match[1]) return 0;
+    return currencyStringToCents(match[1].replace(/,/g, ''));
+  }
+
+  if (selection.kind === 'none') {
+    const unmatchedDescription = prompt.slice(0, 100);
+    const attemptedAmountCents = extractAttemptedAmountCents(prompt);
+
+    const [rejectedIntent] = await db
+      .insert(purchaseIntent)
+      .values({
+        agentId: targetAgent.id,
+        userId,
+        idempotencyKey,
+        prompt,
+        itemDescription: unmatchedDescription,
+        merchantName: 'No catalog match',
+        merchantCategory: null,
+        estimatedAmountCents: attemptedAmountCents,
+        currency: 'USD',
+        status: 'rejected',
+        rejectionReason: selection.reason,
+        reasoningLog: sanitizeDetails(reasoningLog) as unknown as Array<Record<string, unknown>>,
+      })
+      .returning();
+
+    return {
+      purchaseIntentId: rejectedIntent?.id ?? '',
+      transactionId: '',
+      paypalOrderId: '',
+      paypalCaptureId: '',
+      amountCents: attemptedAmountCents,
+      currency: 'USD',
+      status: 'rejected',
+      itemDescription: unmatchedDescription,
+      merchantName: 'No catalog match',
+      reasoningLog,
+      error: selection.reason,
+      ruleTriggered: selection.ruleTriggered,
+    };
+  }
+
+  const parsedItem = {
+    itemDescription: selection.offer.title,
+    merchantName: selection.offer.merchantName,
+    merchantCategory: selection.offer.merchantCategory,
+    amountCents: selection.offer.priceCents,
+  };
 
   // 4. Policy Guardrail Evaluation (AC-1, AC-2)
   const policy = await getOrCreateAgentPolicy(targetAgent.id);
@@ -326,7 +227,7 @@ Always invoke the purchaseAsset tool to confirm your decision.`,
   });
 
   reasoningLog.push({
-    step: 2,
+    step: reasoningLog.length + 1,
     toolName: 'evaluate_policy',
     thought: policyResult.reason,
     input: {
@@ -484,7 +385,7 @@ Always invoke the purchaseAsset tool to confirm your decision.`,
     });
 
     reasoningLog.push({
-      step: 3,
+      step: reasoningLog.length + 1,
       toolName: 'create_paypal_order',
       thought: `Created sandbox PayPal order with intent CAPTURE (Order ID: ${createRes.orderId}).`,
       input: {
@@ -538,10 +439,10 @@ Always invoke the purchaseAsset tool to confirm your decision.`,
     }
 
     // 7. PayPal Capture Order
-    const captureRes = await capturePayPalOrder(createRes.orderId);
+    const captureRes = await capturePayPalOrder(createRes.orderId, parsedItem.amountCents);
 
     reasoningLog.push({
-      step: 4,
+      step: reasoningLog.length + 1,
       toolName: 'capture_paypal_order',
       thought: `Captured payment in sandbox via server credentials (Capture ID: ${captureRes.captureId}).`,
       input: {
@@ -823,7 +724,7 @@ export async function executeApprovedPurchaseCapture(params: {
     }
 
     // 5. Capture PayPal Order
-    const captureRes = await capturePayPalOrder(orderId);
+    const captureRes = await capturePayPalOrder(orderId, intent.estimatedAmountCents);
     const capturedAt = new Date();
     const finalAmountCents = captureRes.capturedAmountCents || intent.estimatedAmountCents;
 

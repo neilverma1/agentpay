@@ -1,7 +1,9 @@
 'use client';
 
+import { EditGuardrailsDialog, type PolicyData } from '@/components/chat/edit-guardrails-dialog';
 import { MarkdownContent } from '@/components/chat/markdown-content';
 import { PaymentReceiptCard, cleanItemName } from '@/components/chat/payment-receipt-card';
+import { PolicyViolationCard } from '@/components/chat/policy-violation-card';
 import { PurchaseDeclinedCard } from '@/components/chat/purchase-declined-card';
 import { useHeader } from '@/components/layout/header-context';
 import { PromptInput } from '@/components/prompt-input';
@@ -16,8 +18,30 @@ import {
   CardHeader,
   CardTitle,
 } from '@workspace/ui/components/card';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@workspace/ui/components/dropdown-menu';
 import { Skeleton } from '@workspace/ui/components/skeleton';
-import { AlertTriangle, Bot, Loader2, ShieldCheck, Sparkles, User } from 'lucide-react';
+import { cn } from '@workspace/ui/lib/utils';
+import {
+  AlertTriangle,
+  Bot,
+  Check,
+  Loader2,
+  MoreVertical,
+  Pencil,
+  ShieldCheck,
+  SlidersHorizontal,
+  Trash2,
+  User,
+  X,
+} from 'lucide-react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import * as React from 'react';
 import { toast } from 'sonner';
 
@@ -63,7 +87,8 @@ function formatRuleTrigger(rule: unknown): string {
 }
 
 export function ChatThreadView({ threadId }: ChatThreadViewProps) {
-  const { setTitle } = useHeader();
+  const { setTitle, setActions } = useHeader();
+  const router = useRouter();
   const [thread, setThread] = React.useState<ThreadDetails | null>(null);
   const [isLoadingThread, setIsLoadingThread] = React.useState(true);
   const [messages, setMessages] = React.useState<ChatMessageItem[]>([]);
@@ -77,8 +102,197 @@ export function ChatThreadView({ threadId }: ChatThreadViewProps) {
     Record<string, Record<string, unknown>>
   >({});
   const [actionLoadingId, setActionLoadingId] = React.useState<string | null>(null);
+  const [isGuardrailsOpen, setIsGuardrailsOpen] = React.useState(false);
+  const [policy, setPolicy] = React.useState<PolicyData | null>(null);
+  const [isDeletingThread, setIsDeletingThread] = React.useState(false);
+  const [isEditingTitle, setIsEditingTitle] = React.useState(false);
+  const [titleDraft, setTitleDraft] = React.useState('');
+  const [isSavingTitle, setIsSavingTitle] = React.useState(false);
+
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
   const triggerStreamingRef = React.useRef<(promptToSend: string) => Promise<void>>(undefined);
+
+  // Fetch policy for guardrails and header headroom indicator
+  const refreshPolicy = React.useCallback(async () => {
+    try {
+      const res = await fetch('/api/v1/agent/policy');
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.policy) setPolicy(data.policy);
+      }
+    } catch {}
+  }, []);
+
+  React.useEffect(() => {
+    refreshPolicy();
+  }, [refreshPolicy]);
+
+  const latestPurchaseIntentId = React.useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const parts = messages[i]?.parts || [];
+      for (const part of parts) {
+        if (
+          part &&
+          typeof part === 'object' &&
+          'purchaseIntentId' in part &&
+          part.purchaseIntentId
+        ) {
+          return String(part.purchaseIntentId);
+        }
+      }
+    }
+    return null;
+  }, [messages]);
+
+  const handleDeleteThread = React.useCallback(async () => {
+    if (!window.confirm('Are you sure you want to delete this mission? This cannot be undone.')) {
+      return;
+    }
+    setIsDeletingThread(true);
+    try {
+      const res = await fetch(`/api/v1/chat/threads/${threadId}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) throw new Error('Failed to delete thread');
+      toast.success('Mission thread deleted');
+      router.push('/chat');
+    } catch {
+      toast.error('Failed to delete mission thread');
+      setIsDeletingThread(false);
+    }
+  }, [threadId, router]);
+
+  const startEditingTitle = React.useCallback(() => {
+    if (!thread) return;
+    const firstUserMsg = messages.find((m) => m.role === 'user')?.content;
+    const current = thread.title.endsWith('...') && firstUserMsg ? firstUserMsg : thread.title;
+    setTitleDraft(current);
+    setIsEditingTitle(true);
+  }, [thread, messages]);
+
+  const handleSaveTitle = React.useCallback(async () => {
+    const trimmed = titleDraft.trim();
+    if (!trimmed || !thread || isSavingTitle) return;
+    if (trimmed === thread.title) {
+      setIsEditingTitle(false);
+      return;
+    }
+
+    setIsSavingTitle(true);
+    try {
+      const res = await fetch(`/api/v1/chat/threads/${threadId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: trimmed }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to rename mission');
+      }
+
+      const data = await res.json();
+      setThread((prev) => (prev ? { ...prev, title: data.thread.title } : null));
+      setIsEditingTitle(false);
+      toast.success('Mission renamed');
+    } catch (err) {
+      console.error(err);
+      toast.error(err instanceof Error ? err.message : 'Failed to rename mission');
+    } finally {
+      setIsSavingTitle(false);
+    }
+  }, [titleDraft, thread, threadId, isSavingTitle]);
+
+  React.useEffect(() => {
+    const auditUrl = latestPurchaseIntentId ? `/audit?id=${latestPurchaseIntentId}` : '/audit';
+
+    const spentCents = policy?.spentLast24HoursCents ?? 0;
+    const spentDollars = (spentCents / 100).toFixed(2);
+    const limitDollars = policy ? (policy.maxDailySpendCents / 100).toFixed(2) : '100.00';
+    const gateDollars = policy ? (policy.requireApprovalAboveCents / 100).toFixed(2) : '50.00';
+    const percentSpent =
+      policy && policy.maxDailySpendCents > 0
+        ? Math.min(100, Math.round((spentCents / policy.maxDailySpendCents) * 100))
+        : 0;
+
+    const statusDotColor =
+      percentSpent >= 90 ? 'bg-rose-500' : percentSpent >= 70 ? 'bg-amber-500' : 'bg-emerald-500';
+
+    setActions(
+      <div className="flex items-center gap-2">
+        {policy && (
+          <button
+            type="button"
+            onClick={() => setIsGuardrailsOpen(true)}
+            className="border-border/70 bg-card/80 hover:bg-muted text-muted-foreground hover:text-foreground hidden cursor-pointer items-center gap-2 rounded-full border px-3 py-1 font-mono text-xs tabular-nums shadow-2xs transition-colors sm:inline-flex"
+            title="Click to view and configure agent spending guardrails"
+          >
+            <span className={cn('inline-block size-1.5 shrink-0 rounded-full', statusDotColor)} />
+            <span>
+              Today: ${spentDollars} / ${limitDollars}
+            </span>
+            <span className="text-muted-foreground/40">•</span>
+            <span className="text-muted-foreground text-[11px]">Gate: &gt;${gateDollars}</span>
+          </button>
+        )}
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-muted-foreground hover:text-foreground size-8"
+              aria-label="Mission options"
+            >
+              <MoreVertical className="size-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-52">
+            <DropdownMenuItem asChild>
+              <Link href={auditUrl} className="flex cursor-pointer items-center gap-2">
+                <ShieldCheck className="size-4 text-emerald-500" />
+                <span>View in Audit Ledger</span>
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => setIsGuardrailsOpen(true)}
+              className="flex cursor-pointer items-center gap-2"
+            >
+              <SlidersHorizontal className="size-4" />
+              <span>Configure Guardrails</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={startEditingTitle}
+              className="flex cursor-pointer items-center gap-2"
+            >
+              <Pencil className="size-4" />
+              <span>Rename Mission</span>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={handleDeleteThread}
+              disabled={isDeletingThread}
+              className="text-destructive focus:text-destructive flex cursor-pointer items-center gap-2"
+            >
+              <Trash2 className="size-4" />
+              <span>Delete Mission</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>,
+    );
+
+    return () => {
+      setActions(null);
+    };
+  }, [
+    latestPurchaseIntentId,
+    setActions,
+    handleDeleteThread,
+    isDeletingThread,
+    startEditingTitle,
+    policy,
+  ]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -131,11 +345,77 @@ export function ChatThreadView({ threadId }: ChatThreadViewProps) {
       const displayTitle =
         thread.title.endsWith('...') && firstUserMessage ? firstUserMessage : thread.title;
 
-      setTitle(
-        <span className="text-foreground block truncate text-sm font-semibold" title={displayTitle}>
-          {displayTitle}
-        </span>,
-      );
+      if (isEditingTitle) {
+        setTitle(
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleSaveTitle();
+            }}
+            className="flex max-w-[70vw] items-center gap-1 sm:max-w-md"
+          >
+            <input
+              type="text"
+              value={titleDraft}
+              onChange={(e) => setTitleDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') {
+                  e.preventDefault();
+                  setIsEditingTitle(false);
+                }
+              }}
+              autoFocus
+              disabled={isSavingTitle}
+              maxLength={255}
+              aria-label="Mission title"
+              className="bg-muted/80 text-foreground border-input focus:border-primary focus:ring-primary/20 h-7 w-40 min-w-0 flex-1 rounded-md border px-2 text-xs font-medium focus:ring-2 focus:outline-none sm:w-64"
+            />
+            <Button
+              type="submit"
+              size="icon"
+              variant="ghost"
+              disabled={isSavingTitle || !titleDraft.trim()}
+              className="size-7 shrink-0 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 dark:hover:bg-emerald-950/40"
+              aria-label="Save title"
+              title="Save title"
+            >
+              <Check className="size-3.5" />
+            </Button>
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              disabled={isSavingTitle}
+              onClick={() => setIsEditingTitle(false)}
+              className="text-muted-foreground hover:text-foreground size-7 shrink-0"
+              aria-label="Cancel editing"
+              title="Cancel"
+            >
+              <X className="size-3.5" />
+            </Button>
+          </form>,
+        );
+      } else {
+        setTitle(
+          <div className="group flex max-w-[65vw] min-w-0 items-center gap-1.5 sm:max-w-md">
+            <span
+              className="text-foreground block truncate text-sm font-semibold"
+              title={displayTitle}
+            >
+              {displayTitle}
+            </span>
+            <button
+              type="button"
+              onClick={startEditingTitle}
+              className="text-muted-foreground/60 hover:text-foreground hover:bg-muted shrink-0 rounded-md p-1 opacity-0 transition-opacity group-hover:opacity-100"
+              aria-label="Rename mission"
+              title="Rename mission"
+            >
+              <Pencil className="size-3.5" />
+            </button>
+          </div>,
+        );
+      }
     } else {
       setTitle(null);
     }
@@ -143,7 +423,17 @@ export function ChatThreadView({ threadId }: ChatThreadViewProps) {
     return () => {
       setTitle(null);
     };
-  }, [isLoadingThread, thread?.title, messages, setTitle]);
+  }, [
+    isLoadingThread,
+    thread?.title,
+    messages,
+    setTitle,
+    isEditingTitle,
+    titleDraft,
+    isSavingTitle,
+    handleSaveTitle,
+    startEditingTitle,
+  ]);
 
   const triggerStreamingExecution = async (promptToSend: string) => {
     if (isStreaming) return;
@@ -246,6 +536,7 @@ export function ChatThreadView({ threadId }: ChatThreadViewProps) {
                 }),
               );
             } else if (eventType === 'payment_completed') {
+              refreshPolicy();
               setMessages((prev) =>
                 prev.map((msg) => {
                   if (msg.id === tempAssistantId) {
@@ -257,6 +548,26 @@ export function ChatThreadView({ threadId }: ChatThreadViewProps) {
                         {
                           type: 'action_card',
                           cardType: 'payment_completed',
+                          ...parsedData,
+                        },
+                      ],
+                    };
+                  }
+                  return msg;
+                }),
+              );
+            } else if (eventType === 'policy_violation') {
+              setMessages((prev) =>
+                prev.map((msg) => {
+                  if (msg.id === tempAssistantId) {
+                    const existingParts = msg.parts || [];
+                    return {
+                      ...msg,
+                      parts: [
+                        ...existingParts,
+                        {
+                          type: 'action_card',
+                          cardType: 'policy_violation',
                           ...parsedData,
                         },
                       ],
@@ -356,6 +667,7 @@ export function ChatThreadView({ threadId }: ChatThreadViewProps) {
       const captureResult = (resJson.result || resJson) as Record<string, unknown>;
 
       toast.success('Payment approved and captured via PayPal Sandbox.');
+      refreshPolicy();
       setActionCardState((prev) => ({ ...prev, [approvalId]: 'approved' }));
       setActionCardDetails((prev) => {
         const base = prev[approvalId] || cardData || {};
@@ -420,6 +732,13 @@ export function ChatThreadView({ threadId }: ChatThreadViewProps) {
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
+      <EditGuardrailsDialog
+        open={isGuardrailsOpen}
+        onOpenChange={setIsGuardrailsOpen}
+        currentPolicy={policy}
+        onPolicyUpdated={(updated) => setPolicy(updated)}
+      />
+
       {/* Message Feed Area */}
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-6">
@@ -495,6 +814,13 @@ export function ChatThreadView({ threadId }: ChatThreadViewProps) {
                           ? 'rejected'
                           : 'pending');
                     const details = actionCardDetails[approvalId] || card;
+
+                    if (
+                      cardType === 'policy_violation' ||
+                      details.cardType === 'policy_violation'
+                    ) {
+                      return <PolicyViolationCard key={approvalId} details={details} />;
+                    }
 
                     if (cardType === 'approval_required' || currentApprovalState === 'pending') {
                       if (currentApprovalState === 'approved') {
@@ -601,8 +927,8 @@ export function ChatThreadView({ threadId }: ChatThreadViewProps) {
       </div>
 
       {/* Bottom Fixed Prompt Bar */}
-      <div className="bg-background/95 shrink-0 border-t py-3 backdrop-blur sm:py-4">
-        <div className="mx-auto w-full max-w-3xl px-4">
+      <div className="bg-background/80 shrink-0 px-4 pt-2 pb-4 backdrop-blur">
+        <div className="mx-auto w-full max-w-3xl">
           <PromptInput
             value={inputText}
             onChange={setInputText}
@@ -611,15 +937,7 @@ export function ChatThreadView({ threadId }: ChatThreadViewProps) {
             onStop={() => setIsStreaming(false)}
             placeholder="Assign next commerce step or ask about budget headroom..."
             hintText="Enter to submit"
-            modelSlot={
-              <Badge
-                variant="outline"
-                className="text-muted-foreground bg-muted/40 border-border/60 shrink-0 gap-1 rounded-full px-2 py-0.5 font-mono text-[11px]"
-              >
-                <Sparkles className="text-primary size-3" />
-                <span>{thread?.agent?.model || 'gemini-2.5-flash'}</span>
-              </Badge>
-            }
+            compact
           />
         </div>
       </div>

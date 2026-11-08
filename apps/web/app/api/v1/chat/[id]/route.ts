@@ -1,6 +1,6 @@
 import { AgentPurchaseError, executeAgentPurchaseLoop } from '@/lib/agent/purchase';
 import { requireAuth } from '@/lib/auth-helpers';
-import { and, chatMessage, chatThread, db, eq } from '@workspace/db';
+import { and, chatMessage, chatThread, db, desc, eq } from '@workspace/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -72,13 +72,25 @@ export async function POST(
 
   const userPromptText = prompt.trim();
 
-  // 1. Persist user message to chat_message table
-  await db.insert(chatMessage).values({
-    threadId: thread.id,
-    role: 'user',
-    content: userPromptText,
-    parts: [],
+  // 1. Persist user message to chat_message table (avoid duplicating initial prompt if already inserted by thread creation)
+  const existingLastMessage = await db.query.chatMessage.findFirst({
+    where: eq(chatMessage.threadId, thread.id),
+    orderBy: [desc(chatMessage.createdAt)],
   });
+
+  const isAlreadySaved =
+    existingLastMessage &&
+    existingLastMessage.role === 'user' &&
+    existingLastMessage.content === userPromptText;
+
+  if (!isAlreadySaved) {
+    await db.insert(chatMessage).values({
+      threadId: thread.id,
+      role: 'user',
+      content: userPromptText,
+      parts: [],
+    });
+  }
 
   // 2. Stream agent execution and thoughts via Server Sent Events
   const encoder = new TextEncoder();
@@ -183,6 +195,34 @@ export async function POST(
             merchantName: purchaseResult.merchantName,
             amountCents: purchaseResult.amountCents,
             currency: purchaseResult.currency,
+          });
+        } else if (purchaseResult.status === 'rejected') {
+          assistantContent = `Autonomous purchase blocked by spending guardrail: ${purchaseResult.error || 'Spending policy check failed.'}`;
+
+          sendEvent('policy_violation', {
+            purchaseIntentId: purchaseResult.purchaseIntentId,
+            itemDescription: purchaseResult.itemDescription,
+            merchantName: purchaseResult.merchantName,
+            merchantCategory: purchaseResult.merchantCategory,
+            amountCents: purchaseResult.amountCents,
+            currency: purchaseResult.currency,
+            ruleTriggered: purchaseResult.ruleTriggered,
+            rejectionReason: purchaseResult.error,
+            status: 'rejected',
+          });
+
+          parts.push({
+            type: 'action_card',
+            cardType: 'policy_violation',
+            purchaseIntentId: purchaseResult.purchaseIntentId,
+            itemDescription: purchaseResult.itemDescription,
+            merchantName: purchaseResult.merchantName,
+            merchantCategory: purchaseResult.merchantCategory,
+            amountCents: purchaseResult.amountCents,
+            currency: purchaseResult.currency,
+            ruleTriggered: purchaseResult.ruleTriggered,
+            rejectionReason: purchaseResult.error,
+            status: 'rejected',
           });
         } else {
           assistantContent = `Could not complete purchase: ${purchaseResult.error || 'Transaction policy check failed.'}`;

@@ -8,10 +8,13 @@ import { Skeleton } from '@workspace/ui/components/skeleton';
 import { usePathname } from 'next/navigation';
 
 function Header() {
-  const { title } = useHeader();
+  const { title, actions } = useHeader();
   const pathname = usePathname();
   const isChatThreadRoute = /^\/chat\/[^/]+/.test(pathname ?? '');
   const hasContent = Boolean(title || isChatThreadRoute);
+
+  // The landing page renders its own marketing header.
+  if (pathname === '/') return null;
 
   return (
     <header className="flex h-14 shrink-0 items-center justify-between border-b px-4">
@@ -33,7 +36,8 @@ function Header() {
           </div>
         ) : null}
       </div>
-      <div className="shrink-0">
+      <div className="flex shrink-0 items-center gap-2">
+        {actions}
         <ThemeSwitch />
       </div>
     </header>

@@ -1,22 +1,13 @@
 import { Metadata } from 'next';
-import {
-  BASE_URL,
-  DEFAULT_OG_IMAGE,
-  SITE_DESCRIPTION,
-  SITE_NAME,
-  formatSiteTitle,
-  toAbsoluteUrl,
-} from './site-shared';
+import { BASE_URL, SITE_DESCRIPTION, SITE_NAME, formatSiteTitle } from './site-shared';
 
 export const generatePageMetadata = (
   title: string,
   description: string,
   options?: {
-    ogImage?: string;
     noindex?: boolean;
   },
 ): Metadata => {
-  const ogImage = toAbsoluteUrl(options?.ogImage ?? DEFAULT_OG_IMAGE);
   const formattedTitle = formatSiteTitle(title);
 
   return {
@@ -31,21 +22,12 @@ export const generatePageMetadata = (
       description,
       url: BASE_URL,
       siteName: SITE_NAME,
-      images: [
-        {
-          url: ogImage,
-          width: 1200,
-          height: 630,
-          alt: title,
-        },
-      ],
       type: 'website',
     },
     twitter: {
-      card: 'summary_large_image',
+      card: 'summary',
       title: formattedTitle,
       description,
-      images: [ogImage],
     },
   };
 };
@@ -53,7 +35,7 @@ export const generatePageMetadata = (
 // Page-specific metadata
 export const pageMetadata = {
   home: {
-    title: 'Web | Fullstack Turborepo Starter Template',
+    title: 'PayPal payments for AI agents',
     description: SITE_DESCRIPTION,
   },
   chat: {

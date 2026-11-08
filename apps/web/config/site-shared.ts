@@ -1,21 +1,16 @@
 export const SITE_NAME = 'AgentPay';
-export const SITE_DESCRIPTION = 'A starter template for building applications with Turborepo.';
+export const SITE_DESCRIPTION =
+  'PayPal payments for AI agents, with spending limits, human approval and a full audit trail.';
 export const DEFAULT_BASE_URL = 'https://your-domain.com';
-export const DEFAULT_OG_IMAGE = '/og-image.png';
 export const SITE_KEYWORDS = [
-  'turborepo',
-  'starter',
-  'template',
-  'react',
-  'typescript',
-  'nextjs',
-  'tailwindcss',
-  'drizzle',
-  'postgresql',
-  'shadcn/ui',
-  'better-auth',
-  'resend',
-  'react-email',
+  'ai agents',
+  'agent payments',
+  'paypal',
+  'spending limits',
+  'human in the loop',
+  'approval workflow',
+  'audit log',
+  'agentic commerce',
 ];
 
 const normalizeBaseUrl = (value: string) => {

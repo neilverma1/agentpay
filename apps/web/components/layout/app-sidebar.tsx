@@ -98,6 +98,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     };
   }, [isAuthenticated, isAuthLoading, pathname]);
 
+  // The landing page is for signed-out visitors and has no app sidebar.
+  if (pathname === '/') return null;
+
   return (
     <Sidebar collapsible={config.layout?.sidebarCollapsible ?? 'offcanvas'} {...props}>
       <SidebarHeader>

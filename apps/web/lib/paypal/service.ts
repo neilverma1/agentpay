@@ -46,6 +46,7 @@ export interface CreateOrderParams {
   currency?: string;
   itemDescription: string;
   merchantName: string;
+  paypalRequestId?: string;
 }
 
 export interface CreateOrderResult {
@@ -124,6 +125,7 @@ export async function createPayPalOrder(params: CreateOrderParams): Promise<Crea
         ],
       },
       prefer: 'return=representation',
+      paypalRequestId: params.paypalRequestId || params.purchaseIntentId,
     });
 
     const result = response.result;
@@ -161,6 +163,7 @@ export async function createPayPalOrder(params: CreateOrderParams): Promise<Crea
 export async function capturePayPalOrder(
   orderId: string,
   expectedAmountCents?: number,
+  paypalRequestId?: string,
 ): Promise<CaptureOrderResult> {
   if (isSimulationMode() || orderId.startsWith('SIMULATED-ORDER-')) {
     const simulatedCaptureId = `SIMULATED-CAPTURE-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
@@ -188,6 +191,7 @@ export async function capturePayPalOrder(
     const response = await controller.captureOrder({
       id: orderId,
       prefer: 'return=representation',
+      paypalRequestId: paypalRequestId || `capture-${orderId}`,
     });
 
     const result = response.result;

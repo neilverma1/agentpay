@@ -17,7 +17,13 @@ export interface BuyerAgentStep {
 }
 
 export type OfferSelection =
-  | { kind: 'selected'; offer: CatalogOffer; steps: BuyerAgentStep[]; source: 'model' | 'fallback' }
+  | {
+      kind: 'selected';
+      offer: CatalogOffer;
+      quantity: number;
+      steps: BuyerAgentStep[];
+      source: 'model' | 'fallback';
+    }
   | {
       kind: 'none';
       ruleTriggered: 'no_catalog_match' | 'unknown_offer';
@@ -29,12 +35,19 @@ const MAX_AGENT_STEPS = 6;
 
 const requestPurchaseSchema = z.object({
   offerId: z.string().describe('The offerId of the chosen offer'),
+  quantity: z
+    .number()
+    .int()
+    .min(1)
+    .max(100)
+    .default(1)
+    .describe('The quantity requested by user (integer between 1 and 100, default 1)'),
   reasoning: z.string().describe('Why this offer is the best choice'),
 });
 
 const SYSTEM_PROMPT = `You are the buyer agent for AgentPay.
 Find the best offer for the user's goal in the merchant catalog.
-Call searchOffers (more than once if useful) and compare merchants, then call requestPurchase with the offerId of the offer you choose.
+Call searchOffers (more than once if useful) and compare merchants, then call requestPurchase with the offerId, the quantity requested (default 1 unless user specified multiple units), and reasoning of the offer you choose.
 You cannot pay for anything yourself. Spending is controlled by a separate policy that you cannot change or bypass.`;
 
 function summarizeOffers(offers: readonly CatalogOffer[]): Array<Record<string, unknown>> {
@@ -46,19 +59,67 @@ function summarizeOffers(offers: readonly CatalogOffer[]): Array<Record<string, 
   }));
 }
 
-function selectedStep(offer: CatalogOffer, thought: string): BuyerAgentStep {
+function selectedStep(offer: CatalogOffer, quantity: number, thought: string): BuyerAgentStep {
   return {
     toolName: 'select_offer',
     thought,
-    input: { offerId: offer.offerId },
+    input: { offerId: offer.offerId, quantity },
     output: {
       offerId: offer.offerId,
+      quantity,
       merchantName: offer.merchantName,
       merchantCategory: offer.merchantCategory,
-      priceCents: offer.priceCents,
+      priceCents: offer.priceCents * quantity,
+      unitPriceCents: offer.priceCents,
       source: 'catalog',
     },
   };
+}
+
+/**
+ * Extracts numeric quantity from prompt while respecting catalog titles that contain numbers.
+ */
+export function extractQuantityFromPrompt(prompt: string, offer?: CatalogOffer): number {
+  const trimmed = prompt.trim();
+
+  // 1. Explicit multiplier like "10x", "10 x", "x10"
+  const multiplierMatch = trimmed.match(/\b(?:x\s*(\d+)|\b(\d+)\s*x)\b/i);
+  if (multiplierMatch) {
+    const val = parseInt(multiplierMatch[1] || multiplierMatch[2] || '1', 10);
+    if (val >= 1 && val <= 100) return val;
+  }
+
+  // 2. Action verbs followed by a number: "buy 10", "purchase 5", "order 3", "get 2"
+  const actionMatch = trimmed.match(/\b(?:buy|purchase|order|get)\s+(\d+)\b/i);
+  if (actionMatch && actionMatch[1]) {
+    const qty = parseInt(actionMatch[1], 10);
+    // Guard: check if the number is part of the matched offer's title (e.g. "4 GPU hours")
+    if (offer && offer.title.toLowerCase().startsWith(`${qty} `)) {
+      return 1;
+    }
+    if (offer && offer.title.toLowerCase().includes(`${qty}`)) {
+      return 1;
+    }
+    if (qty >= 1 && qty <= 100) return qty;
+  }
+
+  // 3. Units/seats/credits/licenses/copies preceded by a number: "10 credits", "5 seats", "2 licenses"
+  const unitMatch = trimmed.match(
+    /\b(\d+)\s*(?:units?|seats?|licenses?|credits?|copies|subscriptions?|packages?)\b/i,
+  );
+  if (unitMatch && unitMatch[1]) {
+    const qty = parseInt(unitMatch[1], 10);
+    if (
+      offer &&
+      (offer.title.toLowerCase().startsWith(`${qty} `) ||
+        offer.title.toLowerCase().includes(`${qty}`))
+    ) {
+      return 1;
+    }
+    if (qty >= 1 && qty <= 100) return qty;
+  }
+
+  return 1;
 }
 
 /** Deterministic selection used with no model key, or when the model fails to choose. */
@@ -87,13 +148,17 @@ export function selectOfferWithoutModel(
     };
   }
 
+  const quantity = extractQuantityFromPrompt(prompt, offer);
   steps.push(
     selectedStep(
       offer,
-      `Chose the cheapest matching offer: ${offer.title} from ${offer.merchantName}.`,
+      quantity,
+      quantity > 1
+        ? `Chose the cheapest matching offer: ${quantity}x ${offer.title} from ${offer.merchantName}.`
+        : `Chose the cheapest matching offer: ${offer.title} from ${offer.merchantName}.`,
     ),
   );
-  return { kind: 'selected', offer, steps, source: 'fallback' };
+  return { kind: 'selected', offer, quantity, steps, source: 'fallback' };
 }
 
 /**
@@ -106,7 +171,7 @@ export async function selectOfferForPrompt(prompt: string): Promise<OfferSelecti
   }
 
   const steps: BuyerAgentStep[] = [];
-  let requested: { offerId: string; reasoning: string } | null = null;
+  let requested: { offerId: string; quantity?: number; reasoning: string } | null = null;
 
   try {
     const result = await generateText({
@@ -171,6 +236,7 @@ export async function selectOfferForPrompt(prompt: string): Promise<OfferSelecti
     };
   }
 
-  steps.push(selectedStep(offer, requested.reasoning));
-  return { kind: 'selected', offer, steps, source: 'model' };
+  const quantity = Math.max(1, Math.min(100, Math.floor(requested.quantity || 1)));
+  steps.push(selectedStep(offer, quantity, requested.reasoning));
+  return { kind: 'selected', offer, quantity, steps, source: 'model' };
 }

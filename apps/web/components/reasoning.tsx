@@ -101,7 +101,7 @@ export function ReasoningContent({
 }: React.ComponentProps<typeof TraceCollapsibleContent>) {
   return (
     <TraceCollapsibleContent
-      className={cn('whitespace-pre-wrap bg-transparent', className)}
+      className={cn('bg-transparent whitespace-pre-wrap', className)}
       {...props}
     >
       {children}

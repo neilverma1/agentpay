@@ -112,7 +112,7 @@ export async function getAgentSpentLast24Hours(agentId: string): Promise<number>
       and(
         eq(transaction.agentId, agentId),
         eq(transaction.status, 'completed'),
-        gte(transaction.createdAt, cutoff),
+        gte(sql`coalesce(${transaction.capturedAt}, ${transaction.createdAt})`, cutoff),
       ),
     );
 

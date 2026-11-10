@@ -164,7 +164,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <SidebarMenuButton
               asChild
               tooltip="AgentPay"
-              className="data-[slot=sidebar-menu-button]:p-1.5 group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0!"
+              className="group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0! data-[slot=sidebar-menu-button]:p-1.5"
             >
               <Link
                 href="/"
@@ -203,7 +203,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <Collapsible
           open={isRecentsOpen}
           onOpenChange={handleRecentsOpenChange}
-          className="group/collapsible flex min-h-0 flex-1 flex-col data-[state=closed]:flex-initial group-data-[collapsible=icon]:hidden"
+          className="group/collapsible flex min-h-0 flex-1 flex-col group-data-[collapsible=icon]:hidden data-[state=closed]:flex-initial"
         >
           <SidebarGroup className="flex min-h-0 flex-1 flex-col pb-0">
             <SidebarGroupLabel asChild className="mb-0.5 shrink-0">

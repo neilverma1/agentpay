@@ -18,10 +18,11 @@ import {
   chatMessage,
   db,
   eq,
-  or,
   purchaseIntent,
   transaction,
 } from '@workspace/db';
+
+export const APPROVAL_REQUEST_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 export interface ExecutePurchaseParams {
   agentId: string;
@@ -209,11 +210,17 @@ export async function executeAgentPurchaseLoop(
     };
   }
 
+  const quantity = selection.quantity || 1;
+  const unitPriceCents = selection.offer.priceCents;
+  const totalAmountCents = unitPriceCents * quantity;
+  const itemDescription =
+    quantity > 1 ? `${quantity}x ${selection.offer.title}` : selection.offer.title;
+
   const parsedItem = {
-    itemDescription: selection.offer.title,
+    itemDescription,
     merchantName: selection.offer.merchantName,
     merchantCategory: selection.offer.merchantCategory,
-    amountCents: selection.offer.priceCents,
+    amountCents: totalAmountCents,
   };
 
   // 4. Policy Guardrail Evaluation (AC-1, AC-2)
@@ -382,6 +389,7 @@ export async function executeAgentPurchaseLoop(
       currency: 'USD',
       itemDescription: parsedItem.itemDescription,
       merchantName: parsedItem.merchantName,
+      paypalRequestId: idempotencyKey,
     });
 
     reasoningLog.push({
@@ -439,7 +447,11 @@ export async function executeAgentPurchaseLoop(
     }
 
     // 7. PayPal Capture Order
-    const captureRes = await capturePayPalOrder(createRes.orderId, parsedItem.amountCents);
+    const captureRes = await capturePayPalOrder(
+      createRes.orderId,
+      parsedItem.amountCents,
+      `capture-${createdIntent.id}`,
+    );
 
     reasoningLog.push({
       step: reasoningLog.length + 1,
@@ -604,6 +616,40 @@ export async function executeApprovedPurchaseCapture(params: {
     );
   }
 
+  // 1b. Expiration verification (TTL: 24 hours)
+  const isExpired =
+    approval.status === 'expired' ||
+    (approval.createdAt &&
+      Date.now() - new Date(approval.createdAt).getTime() > APPROVAL_REQUEST_EXPIRY_MS);
+
+  if (isExpired) {
+    if (approval.status !== 'expired') {
+      await db
+        .update(approvalRequest)
+        .set({
+          status: 'expired',
+          updatedAt: new Date(),
+        })
+        .where(eq(approvalRequest.id, approval.id));
+
+      await db
+        .update(purchaseIntent)
+        .set({
+          status: 'failed',
+          rejectionReason:
+            'Approval request expired (exceeded 24 hours). Please initiate a new purchase request.',
+          updatedAt: new Date(),
+        })
+        .where(eq(purchaseIntent.id, intent.id));
+    }
+
+    throw new AgentPurchaseError(
+      'This approval request has expired (older than 24 hours). Spending policies and item pricing require a fresh purchase request.',
+      410,
+      intent.id,
+    );
+  }
+
   // Idempotent return if already completed
   if (intent.status === 'completed') {
     const existingTx = await db.query.transaction.findFirst({
@@ -626,6 +672,52 @@ export async function executeApprovedPurchaseCapture(params: {
     };
   }
 
+  // 1c. Pre-approval freeze verification
+  if (targetAgent.status === 'frozen') {
+    throw new AgentPurchaseError(
+      'Agent wallet is currently frozen. Emergency freeze must be lifted before approval payment capture can proceed.',
+      423,
+      intent.id,
+    );
+  }
+
+  // 1d. Fresh Policy Guardrail Evaluation at Decision Time
+  // Prevents time-drift and daily cap bypasses when approving requests from previous sessions or days.
+  const policy = await getOrCreateAgentPolicy(targetAgent.id);
+  const spentLast24HoursCents = await getAgentSpentLast24Hours(targetAgent.id);
+  const projectedDailySpend = spentLast24HoursCents + intent.estimatedAmountCents;
+
+  // Hard Check A: Single transaction hard ceiling
+  if (intent.estimatedAmountCents > policy.singleTransactionLimitCents) {
+    throw new AgentPurchaseError(
+      `Approval blocked: Purchase amount ($${(intent.estimatedAmountCents / 100).toFixed(2)}) exceeds single transaction ceiling ($${(policy.singleTransactionLimitCents / 100).toFixed(2)}).`,
+      422,
+      intent.id,
+    );
+  }
+
+  // Hard Check B: Rolling 24-hour daily spend cap
+  if (projectedDailySpend > policy.maxDailySpendCents) {
+    throw new AgentPurchaseError(
+      `Approval blocked: Executing this purchase ($${(intent.estimatedAmountCents / 100).toFixed(2)}) would exceed the agent's 24-hour daily spend limit ($${(policy.maxDailySpendCents / 100).toFixed(2)}). Already spent in last 24h: $${(spentLast24HoursCents / 100).toFixed(2)}.`,
+      422,
+      intent.id,
+    );
+  }
+
+  // Hard Check C: Blocked merchant categories
+  const normalizedCategory = intent.merchantCategory?.trim().toLowerCase();
+  const blockedCategories = (policy.blockedMerchantCategories || []).map((c) =>
+    c.trim().toLowerCase(),
+  );
+  if (normalizedCategory && blockedCategories.includes(normalizedCategory)) {
+    throw new AgentPurchaseError(
+      `Approval blocked: Merchant category '${normalizedCategory}' is prohibited by current agent policy.`,
+      422,
+      intent.id,
+    );
+  }
+
   // 2. Atomic conditional update to 'approved' to guarantee single execution (AC-5)
   const [updatedApproval] = await db
     .update(approvalRequest)
@@ -636,12 +728,7 @@ export async function executeApprovedPurchaseCapture(params: {
       reviewedAt: new Date(),
       updatedAt: new Date(),
     })
-    .where(
-      and(
-        eq(approvalRequest.id, approval.id),
-        or(eq(approvalRequest.status, 'pending'), eq(approvalRequest.status, 'approved')),
-      ),
-    )
+    .where(and(eq(approvalRequest.id, approval.id), eq(approvalRequest.status, 'pending')))
     .returning();
 
   if (!updatedApproval) {
@@ -653,6 +740,20 @@ export async function executeApprovedPurchaseCapture(params: {
   }
 
   const currentLogs = (intent.reasoningLog as unknown as ReasoningStep[]) || [];
+
+  currentLogs.push({
+    step: currentLogs.length + 1,
+    toolName: 'recheck_policy_at_approval',
+    thought: `Re-evaluated spending policy at decision time: 24h spend is $${(spentLast24HoursCents / 100).toFixed(2)}, projected $${(projectedDailySpend / 100).toFixed(2)} <= daily cap $${(policy.maxDailySpendCents / 100).toFixed(2)}. Guardrails confirmed.`,
+    input: {
+      spentLast24HoursCents,
+      projectedDailySpend,
+      maxDailySpendCents: policy.maxDailySpendCents,
+      singleTransactionLimitCents: policy.singleTransactionLimitCents,
+    },
+    output: { decision: 'approved' },
+    timestamp: new Date().toISOString(),
+  });
 
   // Update intent to executing_payment
   await db
@@ -698,6 +799,7 @@ export async function executeApprovedPurchaseCapture(params: {
         currency: intent.currency,
         itemDescription: intent.itemDescription,
         merchantName: intent.merchantName,
+        paypalRequestId: `order-${intent.id}`,
       });
       orderId = createRes.orderId;
 
@@ -724,7 +826,11 @@ export async function executeApprovedPurchaseCapture(params: {
     }
 
     // 5. Capture PayPal Order
-    const captureRes = await capturePayPalOrder(orderId, intent.estimatedAmountCents);
+    const captureRes = await capturePayPalOrder(
+      orderId,
+      intent.estimatedAmountCents,
+      `capture-${intent.id}`,
+    );
     const capturedAt = new Date();
     const finalAmountCents = captureRes.capturedAmountCents || intent.estimatedAmountCents;
 
@@ -921,6 +1027,14 @@ export async function rejectPendingApproval(params: {
     };
   }
 
+  if (approval.status === 'approved') {
+    throw new AgentPurchaseError(
+      'Cannot reject a purchase request that was already approved',
+      409,
+      intent.id,
+    );
+  }
+
   // Atomic conditional update
   const [updatedApproval] = await db
     .update(approvalRequest)
@@ -931,12 +1045,7 @@ export async function rejectPendingApproval(params: {
       reviewedAt: new Date(),
       updatedAt: new Date(),
     })
-    .where(
-      and(
-        eq(approvalRequest.id, approvalRequestId),
-        or(eq(approvalRequest.status, 'pending'), eq(approvalRequest.status, 'approved')),
-      ),
-    )
+    .where(and(eq(approvalRequest.id, approvalRequestId), eq(approvalRequest.status, 'pending')))
     .returning();
 
   if (!updatedApproval) {
@@ -972,6 +1081,39 @@ export async function rejectPendingApproval(params: {
       updatedAt: new Date(),
     })
     .where(eq(purchaseIntent.id, intent.id));
+
+  // Also update any chat messages linked to this purchase intent so page reloads immediately show rejected status
+  try {
+    const relatedMessages = await db.query.chatMessage.findMany({
+      where: eq(chatMessage.purchaseIntentId, intent.id),
+    });
+
+    for (const msg of relatedMessages) {
+      if (Array.isArray(msg.parts)) {
+        let modified = false;
+        const updatedParts = (msg.parts as Array<Record<string, unknown>>).map((part) => {
+          if (part && part.type === 'action_card' && part.cardType === 'approval_required') {
+            modified = true;
+            return {
+              ...part,
+              status: 'rejected',
+              rejectionReason: notes || 'Rejected by authorized human reviewer.',
+            };
+          }
+          return part;
+        });
+
+        if (modified) {
+          await db
+            .update(chatMessage)
+            .set({ parts: updatedParts })
+            .where(eq(chatMessage.id, msg.id));
+        }
+      }
+    }
+  } catch {
+    // Non-fatal secondary sync
+  }
 
   return {
     approvalRequestId,

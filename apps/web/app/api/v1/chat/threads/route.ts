@@ -41,10 +41,15 @@ export async function GET(req: NextRequest) {
       let derivedStatus: string = thread.status || 'active';
 
       if (thread.status !== 'archived') {
-        const messages = (thread as { messages?: Array<{
-          purchaseIntent?: { status?: string } | null;
-          parts?: unknown;
-        }> }).messages || [];
+        const messages =
+          (
+            thread as {
+              messages?: Array<{
+                purchaseIntent?: { status?: string } | null;
+                parts?: unknown;
+              }>;
+            }
+          ).messages || [];
 
         let latestIntentStatus: string | null = null;
         for (const msg of messages) {

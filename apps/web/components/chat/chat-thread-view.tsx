@@ -31,6 +31,7 @@ import {
   AlertTriangle,
   Bot,
   Check,
+  Clock,
   Loader2,
   MoreVertical,
   Pencil,
@@ -670,6 +671,20 @@ export function ChatThreadView({ threadId }: ChatThreadViewProps) {
           return;
         }
 
+        if (res.status === 410 || errMsg.toLowerCase().includes('expired')) {
+          toast.error(errMsg);
+          setActionCardState((prev) => ({ ...prev, [approvalId]: 'rejected' }));
+          setActionCardDetails((prev) => ({
+            ...prev,
+            [approvalId]: {
+              ...(cardData || {}),
+              status: 'expired',
+              rejectionReason: errMsg,
+            },
+          }));
+          return;
+        }
+
         toast.error(errMsg);
         return;
       }
@@ -855,22 +870,47 @@ export function ChatThreadView({ threadId }: ChatThreadViewProps) {
                         ? `$${(Number(details.thresholdCents) / 100).toFixed(2)}`
                         : '$50.00';
 
+                      const cardCreatedAt =
+                        (details.createdAt as string) ||
+                        (card.createdAt as string) ||
+                        (message.createdAt ? new Date(message.createdAt).toISOString() : null);
+
+                      const isExpired =
+                        details.status === 'expired' ||
+                        card.status === 'expired' ||
+                        (typeof cardCreatedAt === 'string' &&
+                          Date.now() - new Date(cardCreatedAt).getTime() > 24 * 60 * 60 * 1000);
+
                       return (
                         <Card
                           key={approvalId}
-                          className="bg-card rounded-xl border border-amber-500/40 shadow-xs"
+                          className={cn(
+                            'bg-card rounded-xl border shadow-xs',
+                            isExpired
+                              ? 'border-muted-foreground/30 opacity-80'
+                              : 'border-amber-500/40',
+                          )}
                         >
                           <CardHeader className="pb-3">
                             <div className="flex items-center justify-between">
                               <Badge
                                 variant="outline"
-                                className="gap-1.5 border-amber-500/40 bg-amber-500/10 text-xs font-medium text-amber-700 dark:text-amber-400"
+                                className={cn(
+                                  'gap-1.5 text-xs font-medium',
+                                  isExpired
+                                    ? 'border-muted-foreground/40 bg-muted/60 text-muted-foreground'
+                                    : 'border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400',
+                                )}
                               >
-                                <AlertTriangle className="size-3.5" />
-                                <span>Approval Required</span>
+                                {isExpired ? (
+                                  <Clock className="size-3.5" />
+                                ) : (
+                                  <AlertTriangle className="size-3.5" />
+                                )}
+                                <span>{isExpired ? 'Approval Expired' : 'Approval Required'}</span>
                               </Badge>
                               <span className="text-muted-foreground font-mono text-xs">
-                                Threshold: {thresholdText}
+                                {isExpired ? 'Stale quote (> 24h)' : `Threshold: ${thresholdText}`}
                               </span>
                             </div>
                             <CardTitle className="text-foreground pt-2 text-base font-semibold tracking-tight">
@@ -897,33 +937,47 @@ export function ChatThreadView({ threadId }: ChatThreadViewProps) {
                               </div>
                             </div>
                             <p className="text-muted-foreground text-xs leading-relaxed">
-                              {ruleExplanation}
+                              {isExpired
+                                ? 'This approval request has expired because it was created over 24 hours ago. Current daily spend and item pricing require a fresh check.'
+                                : ruleExplanation}
                             </p>
                           </CardContent>
                           <CardFooter className="flex gap-2.5 border-t pt-3">
-                            <Button
-                              variant="default"
-                              size="sm"
-                              className="flex-1 gap-1.5 bg-emerald-600 font-medium text-white shadow-xs hover:bg-emerald-700 active:bg-emerald-800"
-                              disabled={actionLoadingId === approvalId}
-                              onClick={() => handleApprove(approvalId, card)}
-                            >
-                              {actionLoadingId === approvalId ? (
-                                <Loader2 className="size-3.5 animate-spin" />
-                              ) : (
-                                <ShieldCheck className="size-3.5" />
-                              )}
-                              <span>Approve Payment ({amountFormatted})</span>
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="text-muted-foreground hover:border-destructive hover:bg-destructive/10 hover:text-destructive flex-1 font-medium"
-                              disabled={actionLoadingId === approvalId}
-                              onClick={() => handleDecline(approvalId, card)}
-                            >
-                              <span>Decline</span>
-                            </Button>
+                            {isExpired ? (
+                              <div className="text-muted-foreground flex w-full items-center justify-center gap-1.5 py-1 text-xs">
+                                <Clock className="size-3.5 text-amber-500" />
+                                <span>
+                                  Approval window expired. Submit a new prompt in chat to
+                                  re-evaluate current budget.
+                                </span>
+                              </div>
+                            ) : (
+                              <>
+                                <Button
+                                  variant="default"
+                                  size="sm"
+                                  className="flex-1 gap-1.5 bg-emerald-600 font-medium text-white shadow-xs hover:bg-emerald-700 active:bg-emerald-800"
+                                  disabled={actionLoadingId === approvalId}
+                                  onClick={() => handleApprove(approvalId, card)}
+                                >
+                                  {actionLoadingId === approvalId ? (
+                                    <Loader2 className="size-3.5 animate-spin" />
+                                  ) : (
+                                    <ShieldCheck className="size-3.5" />
+                                  )}
+                                  <span>Approve Payment ({amountFormatted})</span>
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="text-muted-foreground hover:border-destructive hover:bg-destructive/10 hover:text-destructive flex-1 font-medium"
+                                  disabled={actionLoadingId === approvalId}
+                                  onClick={() => handleDecline(approvalId, card)}
+                                >
+                                  <span>Decline</span>
+                                </Button>
+                              </>
+                            )}
                           </CardFooter>
                         </Card>
                       );

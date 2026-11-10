@@ -24,12 +24,13 @@ afterEach(() => {
 function decide(prompt: string) {
   const selection = selectOfferWithoutModel(prompt, []);
   if (selection.kind !== 'selected') throw new Error('expected an offer to be selected');
+  const quantity = selection.quantity || 1;
   return {
     selection,
     result: evaluateSpendingPolicy({
       policy,
       spentLast24HoursCents: 0,
-      estimatedAmountCents: selection.offer.priceCents,
+      estimatedAmountCents: selection.offer.priceCents * quantity,
       merchantCategory: selection.offer.merchantCategory,
     }),
   };
@@ -84,6 +85,26 @@ describe('buyer agent with the trusted catalog', () => {
     if (selection.kind === 'selected') {
       expect(selection.source).toBe('fallback');
       expect(selection.offer.offerId).toBe('gpu-nimbus-4h');
+      expect(selection.quantity).toBe(1);
     }
+  });
+
+  it('correctly extracts quantity and triggers approval for bulk purchase', () => {
+    const { selection, result } = decide('Buy 10 Anthropic developer tier API credits');
+    expect(selection.offer.offerId).toBe('api-anthropic-credits-25');
+    expect(selection.quantity).toBe(10);
+    expect(selection.offer.priceCents).toBe(2500); // Unit price $25.00
+    // Total price is $250.00 (25000 cents), which exceeds $50.00 requireApprovalAboveCents
+    expect(result.decision).toBe('requires_approval');
+    expect(result.ruleTriggered).toBe('require_approval_above_cents');
+    expect(result.triggerDetails?.estimatedAmountCents).toBe(25000);
+  });
+
+  it('correctly extracts quantity for seats', () => {
+    const { selection, result } = decide('Buy 2 Figma Pro seats');
+    expect(selection.offer.offerId).toBe('figma-pro-seat-45');
+    expect(selection.quantity).toBe(2);
+    expect(selection.offer.priceCents * selection.quantity).toBe(9000); // $90.00
+    expect(result.decision).toBe('requires_approval');
   });
 });

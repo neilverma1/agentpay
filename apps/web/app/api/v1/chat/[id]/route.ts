@@ -6,6 +6,7 @@ import { z } from 'zod';
 
 const chatRequestSchema = z.object({
   prompt: z.string().min(1, 'Prompt cannot be empty').max(1000).optional(),
+  idempotencyKey: z.string().max(128).optional(),
   messages: z
     .array(
       z.object({
@@ -83,14 +84,24 @@ export async function POST(
     existingLastMessage.role === 'user' &&
     existingLastMessage.content === userPromptText;
 
+  let savedUserMessageId = existingLastMessage?.id;
+
   if (!isAlreadySaved) {
-    await db.insert(chatMessage).values({
-      threadId: thread.id,
-      role: 'user',
-      content: userPromptText,
-      parts: [],
-    });
+    const [insertedMsg] = await db
+      .insert(chatMessage)
+      .values({
+        threadId: thread.id,
+        role: 'user',
+        content: userPromptText,
+        parts: [],
+      })
+      .returning();
+    savedUserMessageId = insertedMsg?.id;
   }
+
+  const idempotencyKey =
+    validated.data.idempotencyKey ||
+    (savedUserMessageId ? `chat-msg-${savedUserMessageId}` : `chat-${thread.id}-${Date.now()}`);
 
   // 2. Stream agent execution and thoughts via Server Sent Events
   const encoder = new TextEncoder();
@@ -123,7 +134,7 @@ export async function POST(
           agentId: thread.agentId,
           userId: session.user.id,
           prompt: userPromptText,
-          idempotencyKey: crypto.randomUUID(),
+          idempotencyKey,
         });
 
         if (purchaseResult.reasoningLog && purchaseResult.reasoningLog.length > 0) {
@@ -167,6 +178,7 @@ export async function POST(
             amountCents: purchaseResult.amountCents,
             currency: purchaseResult.currency,
             ruleTriggered: purchaseResult.ruleTriggered,
+            createdAt: new Date().toISOString(),
           });
         } else if (purchaseResult.status === 'completed') {
           assistantContent = `Successfully purchased **${purchaseResult.itemDescription}** from **${purchaseResult.merchantName}** for **$${(purchaseResult.amountCents / 100).toFixed(2)}**. Payment captured via PayPal sandbox (Capture ID: \`${purchaseResult.paypalCaptureId}\`).`;

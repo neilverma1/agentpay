@@ -11,6 +11,7 @@ import {
   db,
   desc,
   eq,
+  lt,
   purchaseIntent,
   type ApprovalRequestStatus,
 } from '@workspace/db';
@@ -107,6 +108,15 @@ export async function GET(req: NextRequest) {
   const statusParam = (searchParams.get('status') || 'pending') as ApprovalRequestStatus;
 
   try {
+    const expirationCutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    // Lazily mark pending requests older than 24 hours as expired
+    await db
+      .update(approvalRequest)
+      .set({ status: 'expired', updatedAt: new Date() })
+      .where(
+        and(eq(approvalRequest.status, 'pending'), lt(approvalRequest.createdAt, expirationCutoff)),
+      );
+
     const rawApprovals = await db
       .select({
         id: approvalRequest.id,

@@ -100,7 +100,10 @@ export function ReasoningContent({
   ...props
 }: React.ComponentProps<typeof TraceCollapsibleContent>) {
   return (
-    <TraceCollapsibleContent className={cn('whitespace-pre-wrap', className)} {...props}>
+    <TraceCollapsibleContent
+      className={cn('whitespace-pre-wrap bg-transparent', className)}
+      {...props}
+    >
       {children}
     </TraceCollapsibleContent>
   );
@@ -171,7 +174,7 @@ export function Reasoning({
 
   return (
     <ReasoningContext.Provider value={contextValue}>
-      <Trace className={cn('w-full', className)} {...props}>
+      <Trace className={cn('w-full border-none bg-transparent shadow-none', className)} {...props}>
         <TraceCollapsible open={currentOpen} onOpenChange={handleOpenChange}>
           {children || (
             <>

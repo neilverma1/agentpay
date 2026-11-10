@@ -38,11 +38,14 @@ interface SidebarThread {
   status: string;
 }
 
+const RECENTS_STORAGE_KEY = 'agentpay:sidebar:recents-open';
+
 function getStatusDotColor(status: string): string {
   switch (status.toLowerCase()) {
     case 'active':
       return 'bg-emerald-500 animate-pulse';
     case 'pending_approval':
+    case 'requires_approval':
     case 'paused':
       return 'bg-amber-500';
     case 'completed':
@@ -54,7 +57,28 @@ function getStatusDotColor(status: string): string {
     case 'rejected':
       return 'bg-rose-500';
     default:
-      return 'bg-emerald-500';
+      return 'bg-sky-500';
+  }
+}
+
+function getStatusLabel(status: string): string {
+  switch (status.toLowerCase()) {
+    case 'active':
+      return 'In Progress';
+    case 'pending_approval':
+    case 'requires_approval':
+      return 'Needs Approval';
+    case 'completed':
+    case 'settled':
+      return 'Completed';
+    case 'failed':
+      return 'Failed';
+    case 'rejected':
+      return 'Policy Rejected';
+    case 'archived':
+      return 'Archived';
+    default:
+      return status.replace(/_/g, ' ');
   }
 }
 
@@ -66,6 +90,48 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   const [threads, setThreads] = React.useState<SidebarThread[]>([]);
   const [isLoadingThreads, setIsLoadingThreads] = React.useState(true);
+  const [isRecentsOpen, setIsRecentsOpen] = React.useState(false);
+  const hasInitializedPref = React.useRef(false);
+
+  // Read saved preference from browser storage or auto-open on active chat if no preference exists
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const saved = localStorage.getItem(RECENTS_STORAGE_KEY);
+      if (saved !== null) {
+        setIsRecentsOpen(saved === 'true');
+        hasInitializedPref.current = true;
+      } else if (pathname.startsWith('/chat/') && !hasInitializedPref.current) {
+        setIsRecentsOpen(true);
+      }
+    } catch {
+      // Storage access blocked or restricted
+    }
+  }, [pathname]);
+
+  const handleRecentsOpenChange = React.useCallback((open: boolean) => {
+    setIsRecentsOpen(open);
+    hasInitializedPref.current = true;
+    try {
+      localStorage.setItem(RECENTS_STORAGE_KEY, String(open));
+    } catch {
+      // Storage access blocked or restricted
+    }
+  }, []);
+
+  const fetchThreads = React.useCallback(async () => {
+    try {
+      const res = await fetch('/api/v1/chat/threads?limit=20');
+      if (res.ok) {
+        const data = await res.json();
+        setThreads(data.threads || []);
+      }
+    } catch (err) {
+      console.error('Failed to load recent threads for sidebar', err);
+    } finally {
+      setIsLoadingThreads(false);
+    }
+  }, []);
 
   React.useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -74,48 +140,50 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       setIsLoadingThreads(false);
       return;
     }
-    let isMounted = true;
     setIsLoadingThreads(true);
+    fetchThreads();
 
-    fetch('/api/v1/chat/threads?limit=20')
-      .then((res) => (res.ok ? res.json() : Promise.resolve({ threads: [] })))
-      .then((data) => {
-        if (isMounted) {
-          setThreads(data.threads || []);
-        }
-      })
-      .catch((err) => {
-        console.error('Failed to load recent threads for sidebar', err);
-      })
-      .finally(() => {
-        if (isMounted) {
-          setIsLoadingThreads(false);
-        }
-      });
-
-    return () => {
-      isMounted = false;
+    const handleUpdate = () => {
+      fetchThreads();
     };
-  }, [isAuthenticated, isAuthLoading, pathname]);
+
+    window.addEventListener('agentpay:threads-updated', handleUpdate);
+    return () => {
+      window.removeEventListener('agentpay:threads-updated', handleUpdate);
+    };
+  }, [isAuthenticated, isAuthLoading, pathname, fetchThreads]);
 
   // The landing page is for signed-out visitors and has no app sidebar.
   if (pathname === '/') return null;
 
   return (
     <Sidebar collapsible={config.layout?.sidebarCollapsible ?? 'offcanvas'} {...props}>
-      <SidebarHeader>
+      <SidebarHeader className="border-sidebar-border flex h-14 justify-center border-b px-2">
         <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild className="data-[slot=sidebar-menu-button]:p-1.5!">
-              <Link href="/">
-                <Logo variant="sidebar" />
+          <SidebarMenuItem className="group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:justify-center">
+            <SidebarMenuButton
+              asChild
+              tooltip="AgentPay"
+              className="data-[slot=sidebar-menu-button]:p-1.5 group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0!"
+            >
+              <Link
+                href="/"
+                className="flex w-full items-center justify-start group-data-[collapsible=icon]:justify-center"
+              >
+                <Logo
+                  variant="sidebar"
+                  classes={{
+                    container:
+                      'group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0',
+                  }}
+                />
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
-      <SidebarContent>
-        <SidebarGroup>
+      <SidebarContent className="overflow-hidden">
+        <SidebarGroup className="shrink-0 pb-0">
           <SidebarGroupContent>
             <SidebarMenu>
               {config.nav.map((item) => (
@@ -132,15 +200,19 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <Collapsible defaultOpen className="group/collapsible">
-          <SidebarGroup>
-            <SidebarGroupLabel asChild className="mb-0.5">
+        <Collapsible
+          open={isRecentsOpen}
+          onOpenChange={handleRecentsOpenChange}
+          className="group/collapsible flex min-h-0 flex-1 flex-col data-[state=closed]:flex-initial group-data-[collapsible=icon]:hidden"
+        >
+          <SidebarGroup className="flex min-h-0 flex-1 flex-col pb-0">
+            <SidebarGroupLabel asChild className="mb-0.5 shrink-0">
               <CollapsibleTrigger className="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex w-full cursor-pointer items-center justify-between rounded-md px-2 py-1 text-xs font-medium">
                 <span>Recents</span>
                 <ChevronRight className="size-3.5 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
               </CollapsibleTrigger>
             </SidebarGroupLabel>
-            <CollapsibleContent className="pt-1">
+            <CollapsibleContent className="min-h-0 flex-1 overflow-y-auto pt-1 pr-1">
               <SidebarGroupContent>
                 <SidebarMenu className="space-y-1">
                   {(isLoadingThreads || isAuthLoading) && threads.length === 0 ? (
@@ -176,7 +248,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                                 'size-2 shrink-0 rounded-full',
                                 getStatusDotColor(thread.status),
                               )}
-                              title={`Status: ${thread.status}`}
+                              title={`Status: ${getStatusLabel(thread.status)}`}
                             />
                             <span className="truncate">{thread.title}</span>
                           </Link>

@@ -692,7 +692,7 @@ export function TelemetryDetailDrawer({
                                       'rounded-md border p-3 text-xs leading-relaxed',
                                       isViolationStep
                                         ? 'border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-200'
-                                        : 'border-border/60 bg-muted/40 text-foreground',
+                                        : 'border-border/60 bg-transparent text-foreground',
                                     )}
                                   >
                                     {thought}

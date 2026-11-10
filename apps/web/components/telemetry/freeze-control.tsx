@@ -86,7 +86,7 @@ export function FreezeControl({
                 variant="outline"
                 size="sm"
                 onClick={() => setShowConfirm(true)}
-                className="border-destructive/30 hover:border-destructive/60 hover:bg-destructive/10 text-destructive h-9 text-xs font-medium"
+                className="border-destructive/30 hover:border-destructive/60 hover:bg-destructive/10 text-destructive hover:text-destructive h-9 text-xs font-medium"
               >
                 <ShieldAlertIcon className="mr-1 size-3.5" />
                 Emergency Freeze

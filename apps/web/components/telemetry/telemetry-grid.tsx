@@ -1,7 +1,7 @@
 'use client';
 
+import { AgGridAuditTable } from '@/components/telemetry/ag-grid-table';
 import { AuditTableSkeleton } from '@/components/telemetry/audit-table-skeleton';
-import { AuditDataTable } from '@/components/telemetry/data-table';
 import { FreezeControl } from '@/components/telemetry/freeze-control';
 import { useTelemetry } from '@/hooks/use-telemetry';
 import { Button } from '@workspace/ui/components/button';
@@ -70,7 +70,7 @@ export function AuditTelemetryGrid({
           </div>
         </Card>
       ) : (
-        <AuditDataTable data={items} />
+        <AgGridAuditTable data={items} />
       )}
     </div>
   );

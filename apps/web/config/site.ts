@@ -40,7 +40,7 @@ export const config = {
   domain: DOMAIN,
   layout: {
     showHeader: true, // set --header-height in globals.css (custom or default: 3.5rem) when true, 0rem when false)
-    sidebarCollapsible: 'offcanvas',
+    sidebarCollapsible: 'icon',
   } as LayoutConfig,
   providers: [
     {

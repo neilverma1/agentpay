@@ -157,6 +157,9 @@ export function ChatThreadView({ threadId }: ChatThreadViewProps) {
       });
       if (!res.ok) throw new Error('Failed to delete thread');
       toast.success('Mission thread deleted');
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('agentpay:threads-updated'));
+      }
       router.push('/chat');
     } catch {
       toast.error('Failed to delete mission thread');
@@ -197,6 +200,9 @@ export function ChatThreadView({ threadId }: ChatThreadViewProps) {
       setThread((prev) => (prev ? { ...prev, title: data.thread.title } : null));
       setIsEditingTitle(false);
       toast.success('Mission renamed');
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('agentpay:threads-updated'));
+      }
     } catch (err) {
       console.error(err);
       toast.error(err instanceof Error ? err.message : 'Failed to rename mission');
@@ -606,6 +612,9 @@ export function ChatThreadView({ threadId }: ChatThreadViewProps) {
       } catch (e) {
         console.error(e);
       }
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('agentpay:threads-updated'));
+      }
     }
   };
   triggerStreamingRef.current = triggerStreamingExecution;
@@ -670,6 +679,9 @@ export function ChatThreadView({ threadId }: ChatThreadViewProps) {
 
       toast.success('Payment approved and captured via PayPal Sandbox.');
       refreshPolicy();
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('agentpay:threads-updated'));
+      }
       setActionCardState((prev) => ({ ...prev, [approvalId]: 'approved' }));
       setActionCardDetails((prev) => {
         const base = prev[approvalId] || cardData || {};
@@ -724,6 +736,9 @@ export function ChatThreadView({ threadId }: ChatThreadViewProps) {
 
       toast.info('Purchase declined by operator.');
       setActionCardState((prev) => ({ ...prev, [approvalId]: 'rejected' }));
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('agentpay:threads-updated'));
+      }
     } catch (err) {
       console.error('Decline execution error:', err);
       toast.error('An unexpected error occurred while declining.');
@@ -789,7 +804,7 @@ export function ChatThreadView({ threadId }: ChatThreadViewProps) {
                       steps={messageReasoningSteps}
                       defaultOpen={isStreaming}
                       isStreaming={isStreaming}
-                      className="border-border/70 bg-card/60"
+                      className="border-none bg-transparent shadow-none"
                       agentName={thread?.agent?.name || 'Buyer Agent'}
                     />
                   )}

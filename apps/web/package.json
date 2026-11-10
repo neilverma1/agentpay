@@ -30,6 +30,8 @@
     "@workspace/storage": "workspace:*",
     "@workspace/ui": "workspace:*",
     "@workspace/utils": "workspace:*",
+    "ag-grid-community": "^36.3.0",
+    "ag-grid-react": "^36.3.0",
     "ai": "catalog:core",
     "drizzle-orm": "catalog:core",
     "lucide-react": "catalog:web",

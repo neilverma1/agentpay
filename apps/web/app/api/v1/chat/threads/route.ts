@@ -25,10 +25,92 @@ export async function GET(req: NextRequest) {
       limit,
       with: {
         agent: true,
+        messages: {
+          orderBy: [desc(chatMessage.createdAt)],
+          limit: 10,
+          with: {
+            purchaseIntent: true,
+          },
+        },
       },
     });
 
-    return NextResponse.json({ threads });
+    type ThreadRecord = (typeof threads)[number];
+
+    const formattedThreads = threads.map((thread: ThreadRecord) => {
+      let derivedStatus: string = thread.status || 'active';
+
+      if (thread.status !== 'archived') {
+        const messages = (thread as { messages?: Array<{
+          purchaseIntent?: { status?: string } | null;
+          parts?: unknown;
+        }> }).messages || [];
+
+        let latestIntentStatus: string | null = null;
+        for (const msg of messages) {
+          if (msg.purchaseIntent?.status) {
+            latestIntentStatus = msg.purchaseIntent.status;
+            break;
+          }
+          if (Array.isArray(msg.parts)) {
+            for (const part of msg.parts) {
+              if (part && typeof part === 'object') {
+                const p = part as Record<string, unknown>;
+                if (p.cardType === 'payment_completed' || p.status === 'completed') {
+                  latestIntentStatus = 'completed';
+                  break;
+                }
+                if (p.cardType === 'approval_required' || p.status === 'requires_approval') {
+                  latestIntentStatus = 'requires_approval';
+                  break;
+                }
+                if (p.cardType === 'policy_violation' || p.status === 'rejected') {
+                  latestIntentStatus = 'rejected';
+                  break;
+                }
+                if (p.status === 'failed') {
+                  latestIntentStatus = 'failed';
+                  break;
+                }
+              }
+            }
+            if (latestIntentStatus) break;
+          }
+        }
+
+        if (latestIntentStatus) {
+          if (latestIntentStatus === 'requires_approval') {
+            derivedStatus = 'pending_approval';
+          } else if (latestIntentStatus === 'completed') {
+            derivedStatus = 'completed';
+          } else if (latestIntentStatus === 'rejected') {
+            derivedStatus = 'rejected';
+          } else if (latestIntentStatus === 'failed') {
+            derivedStatus = 'failed';
+          } else if (
+            latestIntentStatus === 'executing_payment' ||
+            latestIntentStatus === 'evaluating_policy' ||
+            latestIntentStatus === 'approved' ||
+            latestIntentStatus === 'pending'
+          ) {
+            derivedStatus = 'active';
+          }
+        } else if (messages.length > 0) {
+          derivedStatus = 'settled';
+        }
+      }
+
+      return {
+        id: thread.id,
+        title: thread.title,
+        status: derivedStatus,
+        createdAt: thread.createdAt,
+        updatedAt: thread.updatedAt,
+        agent: thread.agent,
+      };
+    });
+
+    return NextResponse.json({ threads: formattedThreads });
   } catch (error) {
     console.error('Error fetching chat threads:', error);
     const message = error instanceof Error ? error.message : 'Internal Server Error';

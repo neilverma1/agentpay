@@ -170,12 +170,15 @@ function SelectScrollDownButton({
   );
 }
 
+const SelectOption = SelectItem;
+
 export {
   Select,
   SelectContent,
   SelectGroup,
   SelectItem,
   SelectLabel,
+  SelectOption,
   SelectScrollDownButton,
   SelectScrollUpButton,
   SelectSeparator,

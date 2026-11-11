@@ -57,6 +57,8 @@ catalogs:
     '@aws-sdk/s3-request-presigner': ^3.758.0
     '@paypal/paypal-server-sdk': ^2.5.0
     '@ai-sdk/google': ^4.0.111
+    '@ai-sdk/openai': ^4.0.111
+    '@modelcontextprotocol/sdk': ^1.32.2
     ai: ^7.0.162
 
   server:
@@ -69,7 +71,7 @@ catalogs:
     husky: ^9.1.7
     lint-staged: ^16.4.0
     '@types/node': ^25.8.0
-    tsx: ^4.22.1
+    tsx: ^4.23.15
     '@turbo/gen': ^2.9.14
     vitest: ^4.1.7
     '@vitest/coverage-v8': 4.1.7

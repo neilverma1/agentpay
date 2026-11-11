@@ -12,7 +12,15 @@
       "types": "./src/paypal/index.ts",
       "import": "./src/paypal/index.ts",
       "default": "./dist/paypal/index.js"
+    },
+    "./mcp": {
+      "types": "./src/mcp/index.ts",
+      "import": "./src/mcp/index.ts",
+      "default": "./dist/mcp/index.js"
     }
+  },
+  "bin": {
+    "agentpay-mcp": "./dist/mcp/cli.js"
   },
   "main": "./dist/index.js",
   "scripts": {
@@ -22,12 +30,14 @@
     "dev": "tsc --build --watch",
     "lint": "eslint . --max-warnings 0",
     "lint:fix": "eslint . --fix",
+    "mcp": "tsx src/mcp/cli.ts",
     "test": "vitest run"
   },
   "prettier": "@workspace/prettier-config",
   "dependencies": {
     "@ai-sdk/google": "catalog:core",
-    "@ai-sdk/openai": "^4.0.111",
+    "@ai-sdk/openai": "catalog:core",
+    "@modelcontextprotocol/sdk": "catalog:core",
     "@paypal/paypal-server-sdk": "catalog:core",
     "@workspace/db": "workspace:*",
     "ai": "catalog:core",
@@ -39,6 +49,7 @@
     "@workspace/prettier-config": "workspace:*",
     "@workspace/typescript-config": "workspace:*",
     "@workspace/vitest-presets": "workspace:*",
+    "tsx": "catalog:dev",
     "typescript": "catalog:dev",
     "vitest": "catalog:dev"
   }

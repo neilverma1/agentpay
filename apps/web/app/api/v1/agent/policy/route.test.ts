@@ -1,11 +1,11 @@
 // @vitest-environment node
 import { GET, PATCH } from '@/app/api/v1/agent/policy/route';
+import { requireAuth } from '@/lib/auth-helpers';
 import {
   getAgentSpentLast24Hours,
   getOrCreateAgentPolicy,
   updateAgentPolicy,
-} from '@/lib/agent/policy';
-import { requireAuth } from '@/lib/auth-helpers';
+} from '@workspace/agent';
 import { db } from '@workspace/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -14,7 +14,7 @@ vi.mock('@/lib/auth-helpers', () => ({
   requireAuth: vi.fn(),
 }));
 
-vi.mock('@/lib/agent/policy', () => ({
+vi.mock('@workspace/agent', () => ({
   getOrCreateAgentPolicy: vi.fn(),
   getAgentSpentLast24Hours: vi.fn(),
   updateAgentPolicy: vi.fn(),

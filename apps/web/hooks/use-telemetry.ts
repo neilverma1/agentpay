@@ -1,5 +1,5 @@
-import type { TelemetryFeedResponse } from '@/lib/agent/telemetry';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import type { TelemetryFeedResponse } from '@workspace/agent';
 import { toast } from 'sonner';
 
 async function fetchTelemetry(agentId: string): Promise<TelemetryFeedResponse> {

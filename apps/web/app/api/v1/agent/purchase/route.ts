@@ -1,5 +1,5 @@
-import { AgentPurchaseError, executeAgentPurchaseLoop } from '@/lib/agent/purchase';
 import { requireAuth } from '@/lib/auth-helpers';
+import { AgentPurchaseError, executeAgentPurchaseLoop } from '@workspace/agent';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 

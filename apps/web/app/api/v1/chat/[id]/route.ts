@@ -1,7 +1,10 @@
-import { resolveClarificationReply } from '@/lib/agent/buyer-agent';
-import { getOfferById } from '@/lib/agent/catalog';
-import { AgentPurchaseError, executeAgentPurchaseLoop } from '@/lib/agent/purchase';
 import { requireAuth } from '@/lib/auth-helpers';
+import {
+  AgentPurchaseError,
+  executeAgentPurchaseLoop,
+  getOfferById,
+  resolveClarificationReply,
+} from '@workspace/agent';
 import { and, chatMessage, chatThread, db, desc, eq } from '@workspace/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';

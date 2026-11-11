@@ -1,6 +1,6 @@
 'use client';
 
-import type { TelemetryItem } from '@/lib/agent/telemetry';
+import type { TelemetryItem } from '@workspace/agent';
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@workspace/ui/components/alert';
 import { Badge } from '@workspace/ui/components/badge';
 import { Button } from '@workspace/ui/components/button';

@@ -1,16 +1,3 @@
-import { selectOfferForPrompt } from '@/lib/agent/buyer-agent';
-import {
-  evaluateSpendingPolicy,
-  getAgentSpentLast24Hours,
-  getOrCreateAgentPolicy,
-} from '@/lib/agent/policy';
-import {
-  capturePayPalOrder,
-  createPayPalOrder,
-  currencyStringToCents,
-  PayPalServiceError,
-  sanitizeDetails,
-} from '@/lib/paypal/service';
 import {
   agent,
   and,
@@ -22,6 +9,15 @@ import {
   purchaseIntent,
   transaction,
 } from '@workspace/db';
+import { selectOfferForPrompt } from './buyer-agent';
+import {
+  capturePayPalOrder,
+  createPayPalOrder,
+  currencyStringToCents,
+  PayPalServiceError,
+  sanitizeDetails,
+} from './paypal/service';
+import { evaluateSpendingPolicy, getAgentSpentLast24Hours, getOrCreateAgentPolicy } from './policy';
 
 async function getUserVaultId(userId: string): Promise<string | undefined> {
   const vault = await db.query?.paypalVault?.findFirst?.({

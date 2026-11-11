@@ -1,5 +1,5 @@
 import { requireAuth } from '@/lib/auth-helpers';
-import { createVaultSetupToken, PayPalServiceError } from '@/lib/paypal/service';
+import { createVaultSetupToken, PayPalServiceError } from '@workspace/agent/paypal';
 import { execSync } from 'child_process';
 import { NextRequest, NextResponse } from 'next/server';
 

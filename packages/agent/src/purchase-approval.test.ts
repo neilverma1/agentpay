@@ -1,12 +1,12 @@
 // @vitest-environment node
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   AgentPurchaseError,
   APPROVAL_REQUEST_EXPIRY_MS,
   executeAgentPurchaseLoop,
   executeApprovedPurchaseCapture,
   rejectPendingApproval,
-} from '@/lib/agent/purchase';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+} from './purchase';
 
 const mockApproval = {
   id: 'approval-1',
@@ -53,17 +53,17 @@ const mockPolicy = {
   currency: 'USD',
 };
 
-vi.mock('@/lib/agent/policy', () => ({
+vi.mock('./policy', () => ({
   getOrCreateAgentPolicy: vi.fn(),
   getAgentSpentLast24Hours: vi.fn(),
   evaluateSpendingPolicy: vi.fn(),
 }));
 
-vi.mock('@/lib/agent/buyer-agent', () => ({
+vi.mock('./buyer-agent', () => ({
   selectOfferForPrompt: vi.fn(),
 }));
 
-vi.mock('@/lib/paypal/service', () => ({
+vi.mock('./paypal/service', () => ({
   createPayPalOrder: vi.fn().mockResolvedValue({ orderId: 'ORDER-123' }),
   capturePayPalOrder: vi.fn().mockResolvedValue({
     captureId: 'CAPTURE-123',
@@ -131,7 +131,7 @@ describe('Decision-Time Policy Re-evaluation & Expiry (executeApprovedPurchaseCa
     vi.mocked(db.query.agent.findFirst).mockResolvedValue({ ...mockAgent } as never);
     vi.mocked(db.query.transaction.findFirst).mockResolvedValue(null as never);
 
-    const { getOrCreateAgentPolicy, getAgentSpentLast24Hours } = await import('@/lib/agent/policy');
+    const { getOrCreateAgentPolicy, getAgentSpentLast24Hours } = await import('./policy.js');
     vi.mocked(getOrCreateAgentPolicy).mockResolvedValue({ ...mockPolicy } as never);
     vi.mocked(getAgentSpentLast24Hours).mockResolvedValue(10000); // $100 spent today
   });
@@ -164,7 +164,7 @@ describe('Decision-Time Policy Re-evaluation & Expiry (executeApprovedPurchaseCa
   });
 
   it('blocks approval with HTTP 422 when 24-hour spend plus intent exceeds maxDailySpendCents', async () => {
-    const { getAgentSpentLast24Hours } = await import('@/lib/agent/policy');
+    const { getAgentSpentLast24Hours } = await import('./policy.js');
     // Already spent $450 in the last 24h; intent is $200 -> total $650 > $500 cap
     vi.mocked(getAgentSpentLast24Hours).mockResolvedValue(45000);
 
@@ -225,7 +225,7 @@ describe('Decision-Time Policy Re-evaluation & Expiry (executeApprovedPurchaseCa
   });
 
   it('successfully captures payment and logs decision-time policy re-check when within budget', async () => {
-    const { capturePayPalOrder } = await import('@/lib/paypal/service');
+    const { capturePayPalOrder } = await import('./paypal/service.js');
 
     const result = await executeApprovedPurchaseCapture({
       approvalRequestId: 'approval-1',
@@ -289,7 +289,7 @@ describe('Decision-Time Policy Re-evaluation & Expiry (executeApprovedPurchaseCa
   });
 
   it('handles clarification_needed in executeAgentPurchaseLoop without creating purchaseIntent', async () => {
-    const { selectOfferForPrompt } = await import('@/lib/agent/buyer-agent');
+    const { selectOfferForPrompt } = await import('./buyer-agent.js');
     const { db } = await import('@workspace/db');
 
     vi.mocked(db.query.purchaseIntent.findFirst).mockResolvedValue(null as never);

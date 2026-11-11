@@ -1,9 +1,9 @@
+import { requireAuth } from '@/lib/auth-helpers';
 import {
   AgentPurchaseError,
   executeApprovedPurchaseCapture,
   rejectPendingApproval,
-} from '@/lib/agent/purchase';
-import { requireAuth } from '@/lib/auth-helpers';
+} from '@workspace/agent';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 

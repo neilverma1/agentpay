@@ -1,5 +1,5 @@
-import { getAgentTelemetry, TelemetryServiceError } from '@/lib/agent/telemetry';
 import { requireAuth } from '@/lib/auth-helpers';
+import { getAgentTelemetry, TelemetryServiceError } from '@workspace/agent';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(req: NextRequest, props: { params: Promise<{ agentId: string }> }) {

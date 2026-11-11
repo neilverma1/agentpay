@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { POST } from '@/app/api/v1/purchases/[id]/refund/route';
 import { requireAuth } from '@/lib/auth-helpers';
-import { refundPayPalCapture } from '@/lib/paypal/service';
+import { refundPayPalCapture } from '@workspace/agent/paypal';
 import { db } from '@workspace/db';
 import { NextRequest } from 'next/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -10,7 +10,7 @@ vi.mock('@/lib/auth-helpers', () => ({
   requireAuth: vi.fn(),
 }));
 
-vi.mock('@/lib/paypal/service', () => ({
+vi.mock('@workspace/agent/paypal', () => ({
   refundPayPalCapture: vi.fn(),
 }));
 

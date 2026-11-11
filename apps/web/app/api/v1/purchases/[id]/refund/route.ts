@@ -1,6 +1,6 @@
-import { searchOffers } from '@/lib/agent/catalog';
 import { requireAuth } from '@/lib/auth-helpers';
-import { refundPayPalCapture } from '@/lib/paypal/service';
+import { searchOffers } from '@workspace/agent';
+import { refundPayPalCapture } from '@workspace/agent/paypal';
 import {
   approvalRequest,
   chatMessage,

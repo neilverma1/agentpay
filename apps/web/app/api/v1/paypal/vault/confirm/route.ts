@@ -1,5 +1,5 @@
 import { requireAuth } from '@/lib/auth-helpers';
-import { createVaultPaymentToken } from '@/lib/paypal/service';
+import { createVaultPaymentToken } from '@workspace/agent/paypal';
 import { db, paypalVault } from '@workspace/db';
 import { NextRequest, NextResponse } from 'next/server';
 

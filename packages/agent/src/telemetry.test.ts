@@ -1,6 +1,6 @@
-import { getAgentTelemetry } from '@/lib/agent/telemetry';
 import { db } from '@workspace/db';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { getAgentTelemetry } from './telemetry';
 
 vi.mock('@workspace/db', () => ({
   db: {

@@ -1,6 +1,6 @@
-import type { TelemetryItem } from '@/lib/agent/telemetry';
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { TelemetryItem } from '@workspace/agent';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AgGridAuditTable, StatusColumnFilter } from './ag-grid-table';
 

@@ -25,6 +25,7 @@
     "@tanstack/react-query": "catalog:web",
     "@tanstack/react-table": "catalog:web",
     "@types/qrcode": "catalog:web",
+    "@workspace/agent": "workspace:*",
     "@workspace/auth": "workspace:*",
     "@workspace/contracts": "workspace:*",
     "@workspace/db": "workspace:*",

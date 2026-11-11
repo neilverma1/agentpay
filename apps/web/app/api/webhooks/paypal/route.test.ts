@@ -1,10 +1,10 @@
 // @vitest-environment node
 import { POST } from '@/app/api/webhooks/paypal/route';
-import { processVerifiedWebhook, verifyPayPalWebhookSignature } from '@/lib/paypal/webhook';
+import { processVerifiedWebhook, verifyPayPalWebhookSignature } from '@workspace/agent/paypal';
 import { NextRequest } from 'next/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('@/lib/paypal/webhook', () => ({
+vi.mock('@workspace/agent/paypal', () => ({
   extractPayPalHeaders: vi.fn((headers: Headers) => ({
     authAlgo: headers.get('paypal-auth-algo'),
     certUrl: headers.get('paypal-cert-url'),

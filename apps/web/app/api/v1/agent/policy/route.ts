@@ -1,9 +1,9 @@
+import { requireAuth } from '@/lib/auth-helpers';
 import {
   getAgentSpentLast24Hours,
   getOrCreateAgentPolicy,
   updateAgentPolicy,
-} from '@/lib/agent/policy';
-import { requireAuth } from '@/lib/auth-helpers';
+} from '@workspace/agent';
 import { agent, db, eq } from '@workspace/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';

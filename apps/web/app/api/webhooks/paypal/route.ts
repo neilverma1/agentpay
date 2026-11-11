@@ -3,7 +3,7 @@ import {
   processVerifiedWebhook,
   verifyPayPalWebhookSignature,
   type ReconcilePayload,
-} from '@/lib/paypal/webhook';
+} from '@workspace/agent/paypal';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(req: NextRequest) {

@@ -1,6 +1,6 @@
-import { toggleAgentFreeze } from '@/lib/agent/freeze';
 import { db } from '@workspace/db';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { toggleAgentFreeze } from './freeze';
 
 vi.mock('@workspace/db', () => ({
   db: {

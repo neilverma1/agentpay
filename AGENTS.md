@@ -57,6 +57,7 @@ Stored in `docs/specs/`. Format: `docs/specs/NNNN-title.md`.
 
 ## Context files
 
+- [packages/agent/AGENTS.md](packages/agent/AGENTS.md): Core autonomous agent, catalog, policy, and PayPal settlement
 - [apps/web/AGENTS.md](apps/web/AGENTS.md): Next.js web application and UI routes
 - [packages/db/AGENTS.md](packages/db/AGENTS.md): PostgreSQL schema and Drizzle ORM migrations
 - [packages/auth/AGENTS.md](packages/auth/AGENTS.md): Better Auth server and client integration

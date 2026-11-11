@@ -2,7 +2,7 @@
 
 import { TelemetryDetailDrawer } from '@/components/telemetry/telemetry-detail-drawer';
 import useIsMounted from '@/hooks/useIsMounted';
-import type { TelemetryItem } from '@/lib/agent/telemetry';
+import type { TelemetryItem } from '@workspace/agent';
 import { Badge } from '@workspace/ui/components/badge';
 import { Button } from '@workspace/ui/components/button';
 import { Input } from '@workspace/ui/components/input';

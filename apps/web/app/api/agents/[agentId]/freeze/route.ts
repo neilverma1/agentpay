@@ -1,5 +1,5 @@
-import { FreezeServiceError, toggleAgentFreeze } from '@/lib/agent/freeze';
 import { requireAuth } from '@/lib/auth-helpers';
+import { FreezeServiceError, toggleAgentFreeze } from '@workspace/agent';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 

@@ -1,6 +1,6 @@
-import { getPayPalCredentials, isPayPalConfigured } from '@/lib/paypal/client';
-import { currencyStringToCents, isSimulationMode, sanitizeDetails } from '@/lib/paypal/service';
 import { db, eq, purchaseIntent, sql, transaction, webhookEvent } from '@workspace/db';
+import { getPayPalCredentials, isPayPalConfigured } from './client';
+import { currencyStringToCents, isSimulationMode, sanitizeDetails } from './service';
 
 export interface PayPalWebhookHeaders {
   authAlgo: string | null;

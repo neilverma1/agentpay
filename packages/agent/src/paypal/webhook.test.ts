@@ -1,11 +1,11 @@
+import { db } from '@workspace/db';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   extractPayPalHeaders,
   isValidPayPalCertUrl,
   processVerifiedWebhook,
   verifyPayPalWebhookSignature,
-} from '@/lib/paypal/webhook';
-import { db } from '@workspace/db';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+} from './webhook';
 
 vi.mock('@workspace/db', () => ({
   db: {
@@ -44,7 +44,7 @@ vi.mock('@workspace/db', () => ({
   },
 }));
 
-vi.mock('@/lib/paypal/client', () => ({
+vi.mock('./client', () => ({
   getPayPalCredentials: vi.fn(() => ({
     clientId: 'test-client-id',
     clientSecret: 'test-client-secret',

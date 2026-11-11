@@ -1,3 +1,5 @@
+import { resolveClarificationReply } from '@/lib/agent/buyer-agent';
+import { getOfferById } from '@/lib/agent/catalog';
 import { AgentPurchaseError, executeAgentPurchaseLoop } from '@/lib/agent/purchase';
 import { requireAuth } from '@/lib/auth-helpers';
 import { and, chatMessage, chatThread, db, desc, eq } from '@workspace/db';
@@ -130,10 +132,46 @@ export async function POST(
           timestamp: new Date().toLocaleTimeString(),
         });
 
+        // Check if there was an active clarification request from previous turn
+        const previousAssistantMessage = await db.query.chatMessage.findFirst({
+          where: and(eq(chatMessage.threadId, thread.id), eq(chatMessage.role, 'assistant')),
+          orderBy: [desc(chatMessage.createdAt)],
+        });
+
+        const clarificationPart = Array.isArray(previousAssistantMessage?.parts)
+          ? (previousAssistantMessage.parts.find(
+              (p) =>
+                typeof p === 'object' &&
+                p !== null &&
+                (p as Record<string, unknown>).type === 'clarification_request',
+            ) as Record<string, unknown> | undefined)
+          : undefined;
+
+        let effectivePrompt = userPromptText;
+
+        if (clarificationPart && clarificationPart.offerId) {
+          const offer = getOfferById(clarificationPart.offerId as string);
+          if (offer) {
+            const resolved = resolveClarificationReply(
+              userPromptText,
+              {
+                offerId: offer.offerId,
+                requestedQuantity: Number(clarificationPart.requestedQuantity) || 1,
+                statedAmountCents: Number(clarificationPart.statedAmountCents) || offer.priceCents,
+                totalAmountCents: Number(clarificationPart.totalAmountCents) || offer.priceCents,
+              },
+              offer.title,
+            );
+            if (resolved) {
+              effectivePrompt = resolved;
+            }
+          }
+        }
+
         const purchaseResult = await executeAgentPurchaseLoop({
           agentId: thread.agentId,
           userId: session.user.id,
-          prompt: userPromptText,
+          prompt: effectivePrompt,
           idempotencyKey,
         });
 
@@ -153,8 +191,33 @@ export async function POST(
         let assistantContent = '';
         const parts: Array<Record<string, unknown>> = [];
 
-        if (purchaseResult.status === 'requires_approval') {
-          assistantContent = `I evaluated your request to purchase **${purchaseResult.itemDescription}** from **${purchaseResult.merchantName}** for **$${(purchaseResult.amountCents / 100).toFixed(2)}**. This transaction exceeds autonomous spending limits (${purchaseResult.ruleTriggered || 'threshold exceeded'}). A human in the loop approval is required before capture.`;
+        if (purchaseResult.status === 'clarification_needed') {
+          assistantContent =
+            purchaseResult.clarificationMessage || 'Could you please clarify your request?';
+
+          sendEvent('clarification_needed', {
+            message: assistantContent,
+            status: 'clarification_needed',
+            clarificationDetails: purchaseResult.clarificationDetails,
+            options: purchaseResult.clarificationOptions,
+          });
+
+          parts.push({
+            type: 'clarification_request',
+            message: assistantContent,
+            ...purchaseResult.clarificationDetails,
+            options: purchaseResult.clarificationOptions,
+          });
+        } else if (purchaseResult.status === 'requires_approval') {
+          if (purchaseResult.ruleTriggered === 'strict_compliance_non_refundable') {
+            assistantContent = `I evaluated your request to purchase **${purchaseResult.itemDescription}** from **${purchaseResult.merchantName}** for **$${(purchaseResult.amountCents / 100).toFixed(2)}**. Strict Compliance Mode requires operator authorization for final-sale (non-refundable) items before capture.`;
+          } else {
+            assistantContent = `I evaluated your request to purchase **${purchaseResult.itemDescription}** from **${purchaseResult.merchantName}** for **$${(purchaseResult.amountCents / 100).toFixed(2)}**. This transaction exceeds autonomous spending limits (${purchaseResult.ruleTriggered || 'threshold exceeded'}). A human in the loop approval is required before capture.`;
+          }
+
+          if (purchaseResult.savingsCents && purchaseResult.savingsCents > 0) {
+            assistantContent += `\n\n💡 **Smart Price Optimization**: Selected lowest-priced offer from ${purchaseResult.merchantName}, saving **$${(purchaseResult.savingsCents / 100).toFixed(2)}** compared to alternative catalog merchants.`;
+          }
 
           sendEvent('approval_required', {
             purchaseIntentId: purchaseResult.purchaseIntentId,
@@ -165,6 +228,10 @@ export async function POST(
             amountCents: purchaseResult.amountCents,
             currency: purchaseResult.currency,
             ruleTriggered: purchaseResult.ruleTriggered,
+            savingsCents: purchaseResult.savingsCents,
+            priceComparisonSummary: purchaseResult.priceComparisonSummary,
+            refundable: purchaseResult.refundable,
+            refundTerms: purchaseResult.refundTerms,
             status: 'pending_approval',
           });
 
@@ -178,10 +245,18 @@ export async function POST(
             amountCents: purchaseResult.amountCents,
             currency: purchaseResult.currency,
             ruleTriggered: purchaseResult.ruleTriggered,
+            savingsCents: purchaseResult.savingsCents,
+            priceComparisonSummary: purchaseResult.priceComparisonSummary,
+            refundable: purchaseResult.refundable,
+            refundTerms: purchaseResult.refundTerms,
             createdAt: new Date().toISOString(),
           });
         } else if (purchaseResult.status === 'completed') {
           assistantContent = `Successfully purchased **${purchaseResult.itemDescription}** from **${purchaseResult.merchantName}** for **$${(purchaseResult.amountCents / 100).toFixed(2)}**. Payment captured via PayPal sandbox (Capture ID: \`${purchaseResult.paypalCaptureId}\`).`;
+
+          if (purchaseResult.savingsCents && purchaseResult.savingsCents > 0) {
+            assistantContent += `\n\n💡 **Smart Price Optimization**: Saved **$${(purchaseResult.savingsCents / 100).toFixed(2)}** by selecting ${purchaseResult.merchantName} over competing catalog options.`;
+          }
 
           sendEvent('payment_completed', {
             purchaseIntentId: purchaseResult.purchaseIntentId,
@@ -193,6 +268,10 @@ export async function POST(
             merchantCategory: purchaseResult.merchantCategory,
             amountCents: purchaseResult.amountCents,
             currency: purchaseResult.currency,
+            savingsCents: purchaseResult.savingsCents,
+            priceComparisonSummary: purchaseResult.priceComparisonSummary,
+            refundable: purchaseResult.refundable,
+            refundTerms: purchaseResult.refundTerms,
             status: 'completed',
           });
 
@@ -207,6 +286,10 @@ export async function POST(
             merchantName: purchaseResult.merchantName,
             amountCents: purchaseResult.amountCents,
             currency: purchaseResult.currency,
+            savingsCents: purchaseResult.savingsCents,
+            priceComparisonSummary: purchaseResult.priceComparisonSummary,
+            refundable: purchaseResult.refundable,
+            refundTerms: purchaseResult.refundTerms,
           });
         } else if (purchaseResult.status === 'rejected') {
           assistantContent = `Autonomous purchase blocked by spending guardrail: ${purchaseResult.error || 'Spending policy check failed.'}`;
@@ -279,10 +362,13 @@ export async function POST(
           statusCode,
         });
 
+        const isMissingVault = message.toLowerCase().includes('no paypal account linked');
+        const formattedContent = isMissingVault ? `⚠️ ${message}` : `Error: ${message}`;
+
         await db.insert(chatMessage).values({
           threadId: thread.id,
           role: 'assistant',
-          content: `Error: ${message}`,
+          content: formattedContent,
           parts: [{ type: 'error', message }],
         });
       } finally {

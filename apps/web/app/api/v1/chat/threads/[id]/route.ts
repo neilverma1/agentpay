@@ -88,10 +88,12 @@ export async function GET(
 
           if (matchedIntent.status === 'completed') {
             const completedTx = matchedIntent.transaction;
+            const isRefunded = completedTx?.status === 'refunded';
             return {
               ...part,
               cardType: 'payment_completed',
-              status: 'completed',
+              status: isRefunded ? 'refunded' : 'completed',
+              refundedAmountCents: completedTx?.refundedAmountCents,
               paypalCaptureId:
                 completedTx?.paypalCaptureId ||
                 (part.paypalCaptureId as string) ||

@@ -18,9 +18,17 @@ import {
   chatMessage,
   db,
   eq,
+  paypalVault,
   purchaseIntent,
   transaction,
 } from '@workspace/db';
+
+async function getUserVaultId(userId: string): Promise<string | undefined> {
+  const vault = await db.query?.paypalVault?.findFirst?.({
+    where: eq(paypalVault.userId, userId),
+  });
+  return vault?.vaultId;
+}
 
 export const APPROVAL_REQUEST_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24 hours
 
@@ -51,11 +59,23 @@ export interface PurchaseExecutionResult {
   itemDescription: string;
   merchantName: string;
   merchantCategory?: string;
+  refundable?: boolean;
+  refundTerms?: string;
   reasoningLog: ReasoningStep[];
   capturedAt?: string;
   error?: string;
   approvalRequestId?: string;
   ruleTriggered?: string;
+  clarificationMessage?: string;
+  clarificationOptions?: Array<{ label: string; prompt: string }>;
+  savingsCents?: number;
+  priceComparisonSummary?: string;
+  clarificationDetails?: {
+    offerId: string;
+    requestedQuantity: number;
+    statedAmountCents: number;
+    totalAmountCents: number;
+  };
 }
 
 export class AgentPurchaseError extends Error {
@@ -172,6 +192,30 @@ export async function executeAgentPurchaseLoop(
     return currencyStringToCents(match[1].replace(/,/g, ''));
   }
 
+  if (selection.kind === 'clarification') {
+    return {
+      purchaseIntentId: '',
+      transactionId: '',
+      paypalOrderId: '',
+      paypalCaptureId: '',
+      amountCents: selection.statedAmountCents,
+      currency: 'USD',
+      status: 'clarification_needed',
+      itemDescription: selection.offer.title,
+      merchantName: selection.offer.merchantName,
+      merchantCategory: selection.offer.merchantCategory,
+      reasoningLog,
+      clarificationMessage: selection.message,
+      clarificationOptions: selection.options,
+      clarificationDetails: {
+        offerId: selection.offer.offerId,
+        requestedQuantity: selection.requestedQuantity,
+        statedAmountCents: selection.statedAmountCents,
+        totalAmountCents: selection.totalAmountCents,
+      },
+    };
+  }
+
   if (selection.kind === 'none') {
     const unmatchedDescription = prompt.slice(0, 100);
     const attemptedAmountCents = extractAttemptedAmountCents(prompt);
@@ -215,6 +259,8 @@ export async function executeAgentPurchaseLoop(
   const totalAmountCents = unitPriceCents * quantity;
   const itemDescription =
     quantity > 1 ? `${quantity}x ${selection.offer.title}` : selection.offer.title;
+  const savingsCents = selection.priceComparison?.savingsCents;
+  const priceComparisonSummary = selection.priceComparison?.summary;
 
   const parsedItem = {
     itemDescription,
@@ -231,6 +277,7 @@ export async function executeAgentPurchaseLoop(
     spentLast24HoursCents,
     estimatedAmountCents: parsedItem.amountCents,
     merchantCategory: parsedItem.merchantCategory,
+    refundable: selection.offer.refundable,
   });
 
   reasoningLog.push({
@@ -244,6 +291,7 @@ export async function executeAgentPurchaseLoop(
       requireApprovalAboveCents: policy.requireApprovalAboveCents,
       spentLast24HoursCents,
       merchantCategory: parsedItem.merchantCategory,
+      refundable: selection.offer.refundable,
     },
     output: {
       decision: policyResult.decision,
@@ -320,7 +368,11 @@ export async function executeAgentPurchaseLoop(
         agentId: targetAgent.id,
         status: 'pending',
         ruleTriggered: policyResult.ruleTriggered || 'require_approval_above_cents',
-        triggerDetails: sanitizeDetails(policyResult.triggerDetails || {}),
+        triggerDetails: sanitizeDetails({
+          ...policyResult.triggerDetails,
+          refundable: selection.offer.refundable,
+          refundTerms: selection.offer.refundTerms,
+        }),
       })
       .returning();
 
@@ -338,6 +390,10 @@ export async function executeAgentPurchaseLoop(
       reasoningLog,
       approvalRequestId: createdApproval?.id,
       ruleTriggered: policyResult.ruleTriggered,
+      savingsCents,
+      priceComparisonSummary,
+      refundable: selection.offer.refundable,
+      refundTerms: selection.offer.refundTerms,
     };
   }
 
@@ -390,6 +446,7 @@ export async function executeAgentPurchaseLoop(
       itemDescription: parsedItem.itemDescription,
       merchantName: parsedItem.merchantName,
       paypalRequestId: idempotencyKey,
+      vaultId: await getUserVaultId(userId),
     });
 
     reasoningLog.push({
@@ -506,6 +563,10 @@ export async function executeAgentPurchaseLoop(
       merchantCategory: parsedItem.merchantCategory,
       reasoningLog,
       capturedAt: capturedAt.toISOString(),
+      savingsCents,
+      priceComparisonSummary,
+      refundable: selection.offer.refundable,
+      refundTerms: selection.offer.refundTerms,
     };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Payment execution failed';
@@ -651,6 +712,16 @@ export async function executeApprovedPurchaseCapture(params: {
   }
 
   // Idempotent return if already completed
+  const approvalTriggerDetails = approval.triggerDetails as Record<string, unknown> | undefined;
+  const isRefundable =
+    typeof approvalTriggerDetails?.refundable === 'boolean'
+      ? approvalTriggerDetails.refundable
+      : undefined;
+  const refundTerms =
+    typeof approvalTriggerDetails?.refundTerms === 'string'
+      ? approvalTriggerDetails.refundTerms
+      : undefined;
+
   if (intent.status === 'completed') {
     const existingTx = await db.query.transaction.findFirst({
       where: eq(transaction.purchaseIntentId, intent.id),
@@ -669,6 +740,8 @@ export async function executeApprovedPurchaseCapture(params: {
       reasoningLog: (intent.reasoningLog as unknown as ReasoningStep[]) || [],
       capturedAt: (existingTx?.capturedAt || new Date()).toISOString(),
       approvalRequestId: approval.id,
+      refundable: isRefundable,
+      refundTerms,
     };
   }
 
@@ -800,6 +873,7 @@ export async function executeApprovedPurchaseCapture(params: {
         itemDescription: intent.itemDescription,
         merchantName: intent.merchantName,
         paypalRequestId: `order-${intent.id}`,
+        vaultId: await getUserVaultId(intent.userId),
       });
       orderId = createRes.orderId;
 
@@ -921,6 +995,8 @@ export async function executeApprovedPurchaseCapture(params: {
       reasoningLog: currentLogs,
       capturedAt: capturedAt.toISOString(),
       approvalRequestId,
+      refundable: isRefundable,
+      refundTerms,
     };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'PayPal capture failed';

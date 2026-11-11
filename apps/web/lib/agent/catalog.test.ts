@@ -47,27 +47,76 @@ describe('merchant catalog', () => {
   });
 
   it('resolves starter prompts from chat launcher to their exact merchants and amounts', () => {
-    const anthropic = selectCheapestMatchingOffer(
-      'Buy 2 Anthropic developer tier API credits for $25.00',
+    const mouse = selectCheapestMatchingOffer('Buy Logitech MX Master 3S wireless mouse');
+    expect(mouse?.merchantName).toBe('B&H Photo Video');
+    expect(mouse?.priceCents).toBe(8900);
+
+    const charger = selectCheapestMatchingOffer('Order Anker 65W GaN USB-C fast charger');
+    expect(charger?.merchantName).toBe('Anker Direct');
+    expect(charger?.priceCents).toBe(2999);
+
+    const keyboard = selectCheapestMatchingOffer(
+      'Purchase Keychron K2 wireless mechanical keyboard',
     );
-    expect(anthropic?.merchantName).toBe('Anthropic');
-    expect(anthropic?.priceCents).toBe(2500);
+    expect(keyboard?.merchantName).toBe('Keychron');
+    expect(keyboard?.priceCents).toBe(7900);
 
-    const figma = selectCheapestMatchingOffer('Purchase Figma Pro seat subscription for $45.00');
-    expect(figma?.merchantName).toBe('Figma');
-    expect(figma?.priceCents).toBe(4500);
+    const coffee = selectCheapestMatchingOffer('Order artisan espresso whole beans 2 lb bag');
+    expect(coffee?.merchantName).toBe('Blue Bottle Coffee');
+    expect(coffee?.priceCents).toBe(3200);
 
-    const github = selectCheapestMatchingOffer('Order GitHub Enterprise Team license for $85.00');
-    expect(github?.merchantName).toBe('GitHub');
-    expect(github?.priceCents).toBe(8500);
+    const macbook = selectCheapestMatchingOffer('Purchase Apple MacBook Pro 16-inch');
+    expect(macbook?.merchantName).toBe('Apple Store');
+    expect(macbook?.priceCents).toBe(249900);
 
-    const aws = selectCheapestMatchingOffer('Subscribe to AWS Cloud compute reserve for $120.00');
-    expect(aws?.merchantName).toBe('Amazon Web Services');
-    expect(aws?.priceCents).toBe(12000);
+    const casino = selectCheapestMatchingOffer('Buy 100 chips from LuckySpin Casino');
+    expect(casino?.merchantName).toBe('LuckySpin Casino');
+    expect(casino?.merchantCategory).toBe('gambling');
   });
 
   it('looks up offers by id and rejects unknown ids', () => {
     expect(getOfferById('gpu-nimbus-4h')?.merchantName).toBe('CloudNimbus');
     expect(getOfferById('made-up-offer')).toBeUndefined();
+  });
+
+  it('defines explicit refund policies and terms for all catalog items', () => {
+    for (const offer of MERCHANT_CATALOG) {
+      expect(typeof offer.refundable).toBe('boolean');
+      expect(typeof offer.refundTerms).toBe('string');
+      expect(offer.refundTerms.length).toBeGreaterThan(0);
+    }
+
+    // Verify digital consumable is non-refundable
+    const anthropic = getOfferById('api-anthropic-credits-25');
+    expect(anthropic?.refundable).toBe(false);
+    expect(anthropic?.refundTerms).toContain('non-refundable');
+
+    // Verify software license is refundable
+    const figma = getOfferById('figma-pro-seat-45');
+    expect(figma?.refundable).toBe(true);
+    expect(figma?.refundTerms).toContain('money-back guarantee');
+  });
+
+  it('selects cheapest e-commerce merchant for Logitech mouse and computes price comparison', () => {
+    const mouseOffer = selectCheapestMatchingOffer('Buy Logitech MX Master 3S mouse');
+    expect(mouseOffer?.offerId).toBe('electronics-logitech-mx3-bh');
+    expect(mouseOffer?.merchantName).toBe('B&H Photo Video');
+    expect(mouseOffer?.priceCents).toBe(8900);
+    expect(mouseOffer?.refundable).toBe(true);
+
+    const candidates = searchOffers('Logitech MX Master 3S');
+    expect(candidates.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('resolves consumer electronics and perishable food items correctly', () => {
+    const charger = selectCheapestMatchingOffer('Anker 65W fast charger');
+    expect(charger?.merchantName).toBe('Anker Direct');
+    expect(charger?.priceCents).toBe(2999);
+    expect(charger?.refundable).toBe(true);
+
+    const coffee = selectCheapestMatchingOffer('Buy artisan espresso beans 2 lb');
+    expect(coffee?.merchantName).toBe('Blue Bottle Coffee');
+    expect(coffee?.priceCents).toBe(3200);
+    expect(coffee?.refundable).toBe(false);
   });
 });

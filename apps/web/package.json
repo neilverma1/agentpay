@@ -18,6 +18,7 @@
   "prettier": "@workspace/prettier-config",
   "dependencies": {
     "@ai-sdk/google": "catalog:core",
+    "@ai-sdk/openai": "^4.0.111",
     "@hookform/resolvers": "catalog:web",
     "@paypal/paypal-server-sdk": "catalog:core",
     "@t3-oss/env-nextjs": "catalog:core",

@@ -27,6 +27,7 @@ const updatePolicySchema = z.object({
     .positive()
     .max(1000000, 'Single transaction limit cannot exceed $10,000.00')
     .optional(),
+  requireApprovalForNonRefundable: z.boolean().optional(),
   blockedMerchantCategories: z.array(z.string()).optional(),
   allowedMerchantCategories: z.array(z.string()).optional(),
 });
@@ -73,6 +74,7 @@ export async function GET(req: NextRequest) {
         maxDailySpendCents: policy.maxDailySpendCents,
         singleTransactionLimitCents: policy.singleTransactionLimitCents,
         requireApprovalAboveCents: policy.requireApprovalAboveCents,
+        requireApprovalForNonRefundable: policy.requireApprovalForNonRefundable,
         blockedMerchantCategories: policy.blockedMerchantCategories,
         allowedMerchantCategories: policy.allowedMerchantCategories,
         currency: policy.currency,
@@ -116,6 +118,7 @@ export async function PATCH(req: NextRequest) {
       maxDailySpendCents,
       requireApprovalAboveCents,
       singleTransactionLimitCents,
+      requireApprovalForNonRefundable,
       blockedMerchantCategories,
       allowedMerchantCategories,
     } = validated.data;
@@ -137,6 +140,7 @@ export async function PATCH(req: NextRequest) {
       maxDailySpendCents,
       requireApprovalAboveCents,
       singleTransactionLimitCents: singleTransactionLimitCents ?? maxDailySpendCents,
+      requireApprovalForNonRefundable,
       blockedMerchantCategories,
       allowedMerchantCategories,
     });
@@ -155,6 +159,7 @@ export async function PATCH(req: NextRequest) {
         maxDailySpendCents: updatedPolicy.maxDailySpendCents,
         singleTransactionLimitCents: updatedPolicy.singleTransactionLimitCents,
         requireApprovalAboveCents: updatedPolicy.requireApprovalAboveCents,
+        requireApprovalForNonRefundable: updatedPolicy.requireApprovalForNonRefundable,
         blockedMerchantCategories: updatedPolicy.blockedMerchantCategories,
         allowedMerchantCategories: updatedPolicy.allowedMerchantCategories,
         currency: updatedPolicy.currency,

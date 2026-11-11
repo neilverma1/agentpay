@@ -184,4 +184,45 @@ describe('Agent Policy API (/api/v1/agent/policy)', () => {
     const body = await res.json();
     expect(body.error).toBe('Validation failed');
   });
+
+  it('updates strict compliance mode flag (requireApprovalForNonRefundable)', async () => {
+    vi.mocked(requireAuth).mockResolvedValue({
+      error: null,
+      session: { user: { id: 'usr-1', email: 'user@test.com' } } as never,
+    });
+
+    vi.mocked(db.query.agent.findFirst).mockResolvedValue({
+      id: 'agent-1',
+      userId: 'usr-1',
+    } as never);
+
+    vi.mocked(updateAgentPolicy).mockResolvedValue({
+      id: 'policy-1',
+      agentId: 'agent-1',
+      maxDailySpendCents: 50000,
+      singleTransactionLimitCents: 50000,
+      requireApprovalAboveCents: 5000,
+      requireApprovalForNonRefundable: true,
+      blockedMerchantCategories: [],
+      allowedMerchantCategories: [],
+      currency: 'USD',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    } as never);
+
+    vi.mocked(getAgentSpentLast24Hours).mockResolvedValue(0);
+
+    const req = new NextRequest('http://localhost:3000/api/v1/agent/policy', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        requireApprovalForNonRefundable: true,
+      }),
+    });
+
+    const res = await PATCH(req);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.success).toBe(true);
+    expect(body.policy.requireApprovalForNonRefundable).toBe(true);
+  });
 });

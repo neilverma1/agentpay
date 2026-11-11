@@ -9,6 +9,7 @@ const mockPolicy: AgentPolicy = {
   maxDailySpendCents: 10000, // $100.00
   singleTransactionLimitCents: 5000, // $50.00
   requireApprovalAboveCents: 2500, // $25.00
+  requireApprovalForNonRefundable: false,
   allowedMerchantCategories: [],
   blockedMerchantCategories: ['gambling', 'adult_content', 'crypto_exchange'],
   currency: 'USD',
@@ -97,5 +98,65 @@ describe('evaluateSpendingPolicy', () => {
 
     expect(result.decision).toBe('requires_approval');
     expect(result.ruleTriggered).toBe('category_review_required');
+  });
+
+  it('triggers strict compliance approval when requireApprovalForNonRefundable is true and item is non-refundable', () => {
+    const strictPolicy: AgentPolicy = {
+      ...mockPolicy,
+      requireApprovalForNonRefundable: true,
+      requireApprovalAboveCents: 5000, // $50.00
+    };
+
+    const result = evaluateSpendingPolicy({
+      policy: strictPolicy,
+      spentLast24HoursCents: 0,
+      estimatedAmountCents: 1500, // $15.00 intent (< $50 threshold)
+      merchantCategory: 'cloud_infrastructure',
+      refundable: false,
+    });
+
+    expect(result.decision).toBe('requires_approval');
+    expect(result.ruleTriggered).toBe('strict_compliance_non_refundable');
+    expect(result.triggerDetails?.refundable).toBe(false);
+    expect(result.triggerDetails?.requireApprovalForNonRefundable).toBe(true);
+    expect(result.reason).toContain('Strict Compliance Mode is enabled for final-sale');
+  });
+
+  it('auto-approves refundable items under threshold when strict compliance is enabled', () => {
+    const strictPolicy: AgentPolicy = {
+      ...mockPolicy,
+      requireApprovalForNonRefundable: true,
+      requireApprovalAboveCents: 5000, // $50.00
+    };
+
+    const result = evaluateSpendingPolicy({
+      policy: strictPolicy,
+      spentLast24HoursCents: 0,
+      estimatedAmountCents: 1500, // $15.00 intent (< $50 threshold)
+      merchantCategory: 'software_licenses',
+      refundable: true,
+    });
+
+    expect(result.decision).toBe('auto_approve');
+    expect(result.ruleTriggered).toBeUndefined();
+  });
+
+  it('preserves autonomous micro-spending for non-refundable items when strict compliance is disabled', () => {
+    const permissivePolicy: AgentPolicy = {
+      ...mockPolicy,
+      requireApprovalForNonRefundable: false,
+      requireApprovalAboveCents: 5000, // $50.00
+    };
+
+    const result = evaluateSpendingPolicy({
+      policy: permissivePolicy,
+      spentLast24HoursCents: 0,
+      estimatedAmountCents: 1500, // $15.00 intent (< $50 threshold)
+      merchantCategory: 'cloud_infrastructure',
+      refundable: false,
+    });
+
+    expect(result.decision).toBe('auto_approve');
+    expect(result.ruleTriggered).toBeUndefined();
   });
 });

@@ -2,6 +2,7 @@
 import {
   AgentPurchaseError,
   APPROVAL_REQUEST_EXPIRY_MS,
+  executeAgentPurchaseLoop,
   executeApprovedPurchaseCapture,
   rejectPendingApproval,
 } from '@/lib/agent/purchase';
@@ -46,6 +47,7 @@ const mockPolicy = {
   maxDailySpendCents: 50000, // $500.00
   singleTransactionLimitCents: 50000, // $500.00
   requireApprovalAboveCents: 5000, // $50.00
+  requireApprovalForNonRefundable: false,
   allowedMerchantCategories: [],
   blockedMerchantCategories: ['gambling', 'crypto_exchange'],
   currency: 'USD',
@@ -284,5 +286,72 @@ describe('Decision-Time Policy Re-evaluation & Expiry (executeApprovedPurchaseCa
       expect((err as AgentPurchaseError).statusCode).toBe(409);
       expect((err as AgentPurchaseError).message).toContain('already approved');
     }
+  });
+
+  it('handles clarification_needed in executeAgentPurchaseLoop without creating purchaseIntent', async () => {
+    const { selectOfferForPrompt } = await import('@/lib/agent/buyer-agent');
+    const { db } = await import('@workspace/db');
+
+    vi.mocked(db.query.purchaseIntent.findFirst).mockResolvedValue(null as never);
+    vi.mocked(db.query.agent.findFirst).mockResolvedValue(mockAgent as never);
+    vi.mocked(selectOfferForPrompt).mockResolvedValue({
+      kind: 'clarification',
+      offer: {
+        offerId: 'api-anthropic-credits-25',
+        title: 'Anthropic developer tier API credits',
+        merchantName: 'Anthropic',
+        merchantCategory: 'developer_tools',
+        priceCents: 2500,
+        currency: 'USD',
+        tags: [],
+        refundable: false,
+        refundTerms: 'Digital consumable: non-refundable once provisioned',
+      },
+      requestedQuantity: 2,
+      statedAmountCents: 2500,
+      totalAmountCents: 5000,
+      message:
+        'Anthropic developer tier API credits are $25.00 each ($50.00 total for 2). Did you want me to buy 1 credit for $25.00, or 2 credits for $50.00?',
+      options: [
+        {
+          label: 'Buy 1 for $25.00',
+          prompt: 'Buy 1 Anthropic developer tier API credits for $25.00',
+        },
+        {
+          label: 'Buy 2 for $50.00',
+          prompt: 'Buy 2 Anthropic developer tier API credits for $50.00',
+        },
+      ],
+      steps: [
+        {
+          toolName: 'clarify_offer_pricing',
+          thought: 'Pricing ambiguity detected',
+          input: {},
+          output: {},
+        },
+      ],
+    });
+
+    const insertSpy = vi.spyOn(db, 'insert');
+
+    const result = await executeAgentPurchaseLoop({
+      agentId: 'agent-1',
+      userId: 'user-1',
+      prompt: 'Buy 2 Anthropic developer tier API credits for $25.00',
+      idempotencyKey: 'test-clarification-key',
+    });
+
+    expect(result.status).toBe('clarification_needed');
+    expect(result.clarificationMessage).toContain(
+      'Anthropic developer tier API credits are $25.00 each',
+    );
+    expect(result.clarificationMessage).toContain(
+      'Did you want me to buy 1 credit for $25.00, or 2 credits for $50.00?',
+    );
+    expect(result.amountCents).toBe(2500);
+    expect(result.purchaseIntentId).toBe('');
+    expect(result.transactionId).toBe('');
+    // Ensure no purchaseIntent was inserted into the database
+    expect(insertSpy).not.toHaveBeenCalled();
   });
 });

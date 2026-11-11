@@ -15,12 +15,14 @@ export interface EvaluatePolicyParams {
   spentLast24HoursCents: number;
   estimatedAmountCents: number;
   merchantCategory?: string | null;
+  refundable?: boolean;
 }
 
 export const DEFAULT_POLICY_CONFIG = {
   maxDailySpendCents: 50000, // $500.00 daily spend cap
   singleTransactionLimitCents: 50000, // $500.00 single transaction ceiling
   requireApprovalAboveCents: 5000, // $50.00 human approval trigger threshold
+  requireApprovalForNonRefundable: false, // Strict Compliance Mode: false allows micro-spending
   allowedMerchantCategories: [] as string[], // Empty array allows all non-blocked categories
   blockedMerchantCategories: [
     'gambling',
@@ -36,6 +38,7 @@ export interface UpdateAgentPolicyParams {
   maxDailySpendCents?: number;
   singleTransactionLimitCents?: number;
   requireApprovalAboveCents?: number;
+  requireApprovalForNonRefundable?: boolean;
   blockedMerchantCategories?: string[];
   allowedMerchantCategories?: string[];
 }
@@ -83,6 +86,7 @@ export async function getOrCreateAgentPolicy(agentId: string): Promise<AgentPoli
       maxDailySpendCents: DEFAULT_POLICY_CONFIG.maxDailySpendCents,
       singleTransactionLimitCents: DEFAULT_POLICY_CONFIG.singleTransactionLimitCents,
       requireApprovalAboveCents: DEFAULT_POLICY_CONFIG.requireApprovalAboveCents,
+      requireApprovalForNonRefundable: DEFAULT_POLICY_CONFIG.requireApprovalForNonRefundable,
       allowedMerchantCategories: DEFAULT_POLICY_CONFIG.allowedMerchantCategories,
       blockedMerchantCategories: DEFAULT_POLICY_CONFIG.blockedMerchantCategories,
       currency: DEFAULT_POLICY_CONFIG.currency,
@@ -130,7 +134,8 @@ export async function getAgentSpentLast24Hours(agentId: string): Promise<number>
  * 6. Autonomous approval
  */
 export function evaluateSpendingPolicy(params: EvaluatePolicyParams): PolicyEvaluationResult {
-  const { policy, spentLast24HoursCents, estimatedAmountCents, merchantCategory } = params;
+  const { policy, spentLast24HoursCents, estimatedAmountCents, merchantCategory, refundable } =
+    params;
 
   const normalizedCategory = merchantCategory?.trim().toLowerCase() || null;
   const blockedCategories = (policy.blockedMerchantCategories || []).map((c) =>
@@ -201,7 +206,23 @@ export function evaluateSpendingPolicy(params: EvaluatePolicyParams): PolicyEval
     }
   }
 
-  // 5. Soft Check: Human approval threshold
+  // 5. Soft Check: Strict Compliance Mode for final-sale / non-refundable items
+  if (policy.requireApprovalForNonRefundable && refundable === false) {
+    return {
+      decision: 'requires_approval',
+      ruleTriggered: 'strict_compliance_non_refundable',
+      triggerDetails: {
+        refundable: false,
+        requireApprovalForNonRefundable: true,
+        estimatedAmountCents,
+      },
+      spentLast24HoursCents,
+      reason:
+        'Requires operator authorization: Strict Compliance Mode is enabled for final-sale (non-refundable) items.',
+    };
+  }
+
+  // 6. Soft Check: Human approval threshold
   if (estimatedAmountCents > policy.requireApprovalAboveCents) {
     return {
       decision: 'requires_approval',
@@ -216,7 +237,7 @@ export function evaluateSpendingPolicy(params: EvaluatePolicyParams): PolicyEval
     };
   }
 
-  // 6. Autonomous approval
+  // 7. Autonomous approval
   return {
     decision: 'auto_approve',
     spentLast24HoursCents,

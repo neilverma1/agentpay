@@ -22,6 +22,7 @@ export interface TelemetryItem {
   paypalOrderId: string | null;
   paypalCaptureId: string | null;
   transactionStatus: string | null;
+  refundedAmountCents?: number;
   approvalRequestId: string | null;
   approvalStatus: string | null;
   ruleTriggered: string | null;
@@ -125,6 +126,7 @@ export async function getAgentTelemetry(
       paypalOrderId: row.transaction?.paypalOrderId ?? null,
       paypalCaptureId: row.transaction?.paypalCaptureId ?? null,
       transactionStatus: row.transaction?.status ?? null,
+      refundedAmountCents: row.transaction?.refundedAmountCents ?? 0,
       approvalRequestId: row.approvalRequest?.id ?? null,
       approvalStatus: row.approvalRequest?.status ?? null,
       ruleTriggered: row.approvalRequest?.ruleTriggered ?? null,

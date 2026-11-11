@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { capturePayPalOrder, centsToCurrencyString, currencyStringToCents } from './service';
+import {
+  capturePayPalOrder,
+  centsToCurrencyString,
+  currencyStringToCents,
+  refundPayPalCapture,
+} from './service';
 
 describe('PayPal currency formatting helpers', () => {
   it('converts integer cents to currency string with two decimals (AC-1, AC-4)', () => {
@@ -24,5 +29,17 @@ describe('PayPal currency formatting helpers', () => {
     expect(result.status).toBe('COMPLETED');
     expect(result.capturedAmountCents).toBe(2500);
     expect(result.captureId).toMatch(/^SIMULATED-CAPTURE-/);
+  });
+
+  it('refunds simulated captures using the specified capture id and amount', async () => {
+    const result = await refundPayPalCapture(
+      'SIMULATED-CAPTURE-TEST-1234',
+      2500,
+      'USD',
+      'Customer return',
+    );
+    expect(result.status).toBe('COMPLETED');
+    expect(result.refundedAmountCents).toBe(2500);
+    expect(result.refundId).toMatch(/^SIMULATED-REFUND-/);
   });
 });

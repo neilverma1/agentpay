@@ -43,6 +43,7 @@ import {
   ClockIcon,
   DownloadIcon,
   ListFilterIcon,
+  RotateCcwIcon,
   SearchIcon,
   ShieldAlertIcon,
   ShieldCheckIcon,
@@ -115,6 +116,7 @@ export const agentPayTheme = agentPayDarkTheme;
 export const STATUS_FILTER_OPTIONS = [
   { value: 'all', label: 'All Statuses', icon: ListFilterIcon, iconColor: 'text-muted-foreground' },
   { value: 'completed', label: 'Completed', icon: CheckCircle2Icon, iconColor: 'text-emerald-500' },
+  { value: 'refunded', label: 'Refunded', icon: RotateCcwIcon, iconColor: 'text-amber-500' },
   {
     value: 'requires_approval',
     label: 'Needs Approval',
@@ -135,6 +137,7 @@ export function StatusColumnFilter({
     (params: IDoesFilterPassParams<TelemetryItem>) => {
       const item = params.node.data;
       if (!item || !model || model === 'all') return true;
+      if (model === 'refunded') return item.transactionStatus === 'refunded';
       if (model === 'failed') return item.status === 'failed' || item.status === 'rejected';
       return item.status === model;
     },
@@ -367,6 +370,9 @@ export function AgGridAuditTable({ data }: AgGridAuditTableProps) {
   // Filter items by status before passing to rowData
   const rowData = React.useMemo(() => {
     if (selectedStatus === 'all') return data;
+    if (selectedStatus === 'refunded') {
+      return data.filter((item) => item.transactionStatus === 'refunded');
+    }
     if (selectedStatus === 'failed') {
       return data.filter((item) => item.status === 'failed' || item.status === 'rejected');
     }
@@ -513,12 +519,15 @@ export function AgGridAuditTable({ data }: AgGridAuditTableProps) {
         cellRenderer: (params: ICellRendererParams<TelemetryItem>) => {
           const item = params.data;
           if (!item) return null;
+          const isRefunded = item.transactionStatus === 'refunded';
           const status = item.status;
           const rule = item.ruleTriggered;
           const rejection = item.rejectionReason;
 
           let tooltipText = 'Evaluated against agent policies';
-          if (rejection) {
+          if (isRefunded) {
+            tooltipText = 'PayPal settlement reversed: spend ledger restored';
+          } else if (rejection) {
             tooltipText = `Policy Rejection: ${rejection}`;
           } else if (rule) {
             const friendlyRule = rule.replace(/_/g, ' ');
@@ -535,7 +544,13 @@ export function AgGridAuditTable({ data }: AgGridAuditTableProps) {
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <div className="inline-flex cursor-help">
-                      {status === 'completed' && (
+                      {isRefunded && (
+                        <Badge className="inline-flex items-center gap-1.5 border-amber-500/30 bg-amber-500/15 text-xs font-medium text-amber-700 dark:text-amber-400">
+                          <RotateCcwIcon className="size-3.5 shrink-0" />
+                          Refunded
+                        </Badge>
+                      )}
+                      {!isRefunded && status === 'completed' && (
                         <Badge className="inline-flex items-center gap-1.5 border-emerald-500/30 bg-emerald-500/15 text-xs font-medium text-emerald-600 dark:text-emerald-400">
                           <CheckCircle2Icon className="size-3.5 shrink-0" />
                           Completed

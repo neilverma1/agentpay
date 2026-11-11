@@ -61,6 +61,7 @@ import {
   FileJsonIcon,
   LayoutDashboardIcon,
   Loader2Icon,
+  RotateCcwIcon,
   ShieldAlertIcon,
   ShieldCheckIcon,
   StoreIcon,
@@ -151,7 +152,27 @@ export function TelemetryDetailDrawer({
     ? ''
     : formatDistanceToNow(createdDate, { addSuffix: true });
 
+  const isSimulatedOrder =
+    !item.paypalOrderId ||
+    item.paypalOrderId.startsWith('SIMULATED-') ||
+    item.paypalOrderId === 'SANDBOX_CAPTURED';
+
+  const isSimulatedCapture =
+    !item.paypalCaptureId ||
+    item.paypalCaptureId.startsWith('SIMULATED-') ||
+    item.paypalCaptureId === 'SANDBOX_CAPTURED';
+
+  const isRefunded = item.transactionStatus === 'refunded';
+
   const renderStatusBadge = (status: string) => {
+    if (isRefunded) {
+      return (
+        <Badge className="inline-flex items-center gap-1.5 border-amber-500/30 bg-amber-500/15 text-xs font-medium text-amber-700 dark:text-amber-400">
+          <RotateCcwIcon className="size-3.5 shrink-0" />
+          Refunded via PayPal
+        </Badge>
+      );
+    }
     switch (status) {
       case 'completed':
         return (
@@ -509,21 +530,31 @@ export function TelemetryDetailDrawer({
                             value={item.paypalOrderId}
                             tooltip="Click to copy Order ID"
                           />
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="size-7 p-0"
-                            asChild
-                            title="Open PayPal Sandbox Activity"
-                          >
-                            <a
-                              href={`https://www.sandbox.paypal.com/activity/payment/${item.paypalOrderId}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
+                          {!isSimulatedOrder ? (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="size-7 p-0"
+                              asChild
+                              title="Open PayPal Sandbox Activity"
                             >
-                              <ExternalLinkIcon className="text-muted-foreground size-3.5" />
-                            </a>
-                          </Button>
+                              <a
+                                href={`https://www.sandbox.paypal.com/activity/payment/${item.paypalOrderId}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                <ExternalLinkIcon className="text-muted-foreground size-3.5" />
+                              </a>
+                            </Button>
+                          ) : (
+                            <Badge
+                              variant="outline"
+                              className="border-border text-muted-foreground/80 font-mono text-[10px]"
+                              title="Simulated via local sandbox fallback"
+                            >
+                              Simulated
+                            </Badge>
+                          )}
                         </>
                       ) : (
                         <span className="text-muted-foreground font-mono text-xs">None</span>
@@ -537,10 +568,37 @@ export function TelemetryDetailDrawer({
                     </span>
                     <div className="flex items-center gap-1.5">
                       {item.paypalCaptureId ? (
-                        <CopyableChip
-                          value={item.paypalCaptureId}
-                          tooltip="Click to copy Capture ID"
-                        />
+                        <>
+                          <CopyableChip
+                            value={item.paypalCaptureId}
+                            tooltip="Click to copy Capture ID"
+                          />
+                          {!isSimulatedCapture ? (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="size-7 p-0"
+                              asChild
+                              title="Open PayPal Sandbox Activity"
+                            >
+                              <a
+                                href={`https://www.sandbox.paypal.com/activity/payment/${item.paypalCaptureId}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                <ExternalLinkIcon className="text-muted-foreground size-3.5" />
+                              </a>
+                            </Button>
+                          ) : (
+                            <Badge
+                              variant="outline"
+                              className="border-border text-muted-foreground/80 font-mono text-[10px]"
+                              title="Simulated via local sandbox fallback"
+                            >
+                              Simulated
+                            </Badge>
+                          )}
+                        </>
                       ) : (
                         <span className="text-muted-foreground font-mono text-xs">None</span>
                       )}
@@ -552,8 +610,17 @@ export function TelemetryDetailDrawer({
                       <span className="text-muted-foreground text-xs font-medium">
                         Ledger Settlement
                       </span>
-                      <Badge variant="secondary" className="font-mono text-xs capitalize">
-                        {item.transactionStatus}
+                      <Badge
+                        variant={item.transactionStatus === 'refunded' ? 'outline' : 'secondary'}
+                        className={`font-mono text-xs capitalize ${
+                          item.transactionStatus === 'refunded'
+                            ? 'border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400'
+                            : ''
+                        }`}
+                      >
+                        {item.transactionStatus === 'refunded'
+                          ? 'Reversed (Refunded)'
+                          : item.transactionStatus}
                       </Badge>
                     </div>
                   )}

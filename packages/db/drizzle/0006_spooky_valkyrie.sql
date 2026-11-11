@@ -1,0 +1,1 @@
+ALTER TABLE "agent_policy" ADD COLUMN "require_approval_for_non_refundable" boolean DEFAULT false NOT NULL;

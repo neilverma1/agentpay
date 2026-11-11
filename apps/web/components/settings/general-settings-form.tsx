@@ -28,9 +28,10 @@ import { toast } from 'sonner';
 
 interface GeneralSettingsFormProps {
   user: Session['user'];
+  children?: React.ReactNode;
 }
 
-export function GeneralSettingsForm({ user }: GeneralSettingsFormProps) {
+export function GeneralSettingsForm({ user, children }: GeneralSettingsFormProps) {
   const router = useRouter();
 
   const form = useForm<UpdateProfileFormValues>({
@@ -151,6 +152,8 @@ export function GeneralSettingsForm({ user }: GeneralSettingsFormProps) {
           </form>
         </Form>
       </Card>
+
+      {children}
     </section>
   );
 }

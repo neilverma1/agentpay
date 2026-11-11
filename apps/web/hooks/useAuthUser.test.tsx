@@ -93,4 +93,45 @@ describe('useAuthUser', () => {
     expect(result.current.isLoading).toBe(true);
     expect(result.current.user).toBeNull();
   });
+
+  it('sets isLoading to false immediately when session fetch returns an error', () => {
+    useSessionMock.mockReturnValue({
+      data: null,
+      isPending: false,
+      error: { status: 500, message: 'Internal Server Error' },
+      refetch: refetchMock,
+    });
+
+    const { result } = renderHook(() => useAuthUser());
+
+    expect(result.current.isLoading).toBe(false);
+    expect(result.current.isAuthenticated).toBe(false);
+    expect(result.current.user).toBeNull();
+    expect(result.current.error).toEqual({ status: 500, message: 'Internal Server Error' });
+  });
+
+  it('times out and sets isLoading to false when session fetch is stuck pending', () => {
+    vi.useFakeTimers();
+    useSessionMock.mockReturnValue({
+      data: null,
+      isPending: true,
+      error: null,
+      refetch: refetchMock,
+    });
+
+    const { result } = renderHook(() => useAuthUser({ timeoutMs: 1000 }));
+
+    expect(result.current.isLoading).toBe(true);
+    expect(result.current.isAuthenticated).toBe(false);
+
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
+
+    expect(result.current.isLoading).toBe(false);
+    expect(result.current.isAuthenticated).toBe(false);
+    expect(result.current.user).toBeNull();
+
+    vi.useRealTimers();
+  });
 });

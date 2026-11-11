@@ -1,4 +1,13 @@
-import { index, integer, jsonb, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import {
+  boolean,
+  index,
+  integer,
+  jsonb,
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+} from 'drizzle-orm/pg-core';
 import { user } from './auth';
 
 export const AGENT_STATUSES = ['active', 'frozen', 'archived'] as const;
@@ -35,6 +44,9 @@ export const agentPolicy = pgTable(
     maxDailySpendCents: integer('max_daily_spend_cents').notNull(),
     singleTransactionLimitCents: integer('single_transaction_limit_cents').notNull(),
     requireApprovalAboveCents: integer('require_approval_above_cents').notNull(),
+    requireApprovalForNonRefundable: boolean('require_approval_for_non_refundable')
+      .default(false)
+      .notNull(),
     allowedMerchantCategories: jsonb('allowed_merchant_categories')
       .$type<string[]>()
       .default([])

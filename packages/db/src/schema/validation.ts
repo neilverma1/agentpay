@@ -52,6 +52,7 @@ export const insertAgentPolicySchema = z
       .number()
       .int()
       .nonnegative('Approval threshold must be zero or positive'),
+    requireApprovalForNonRefundable: z.boolean().default(false),
     allowedMerchantCategories: z.array(z.string()).default([]),
     blockedMerchantCategories: z.array(z.string()).default([]),
     currency: z.string().length(3).default('USD'),
@@ -71,6 +72,7 @@ export const selectAgentPolicySchema = z.object({
   maxDailySpendCents: z.number().int(),
   singleTransactionLimitCents: z.number().int(),
   requireApprovalAboveCents: z.number().int(),
+  requireApprovalForNonRefundable: z.boolean(),
   allowedMerchantCategories: z.array(z.string()),
   blockedMerchantCategories: z.array(z.string()),
   currency: z.string(),

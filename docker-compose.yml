@@ -69,6 +69,16 @@ services:
       - agent-pay-app_minio_data_dev:/data
     restart: unless-stopped
 
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    container_name: agent-pay-tunnel
+    command: tunnel --metrics 0.0.0.0:20241 --url http://host.docker.internal:3000
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    ports:
+      - '127.0.0.1:20241:20241'
+    restart: unless-stopped
+
 volumes:
   agent-pay-app_postgres_data_dev:
   agent-pay-app_redis_data_dev:

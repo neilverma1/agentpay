@@ -1,7 +1,14 @@
-import { Client, Environment, OrdersController } from '@paypal/paypal-server-sdk';
+import {
+  Client,
+  Environment,
+  OrdersController,
+  PaymentsController,
+  VaultController,
+} from '@paypal/paypal-server-sdk';
 
 let cachedClient: Client | null = null;
 let cachedOrdersController: OrdersController | null = null;
+let cachedPaymentsController: PaymentsController | null = null;
 
 export function getPayPalCredentials() {
   const clientId = process.env.PAYPAL_CLIENT_ID || '';
@@ -42,6 +49,10 @@ export function getPayPalClient(): Client {
   return cachedClient;
 }
 
+export function getVaultController(): VaultController {
+  return new VaultController(getPayPalClient());
+}
+
 export function getOrdersController(): OrdersController {
   if (cachedOrdersController) {
     return cachedOrdersController;
@@ -50,4 +61,14 @@ export function getOrdersController(): OrdersController {
   const client = getPayPalClient();
   cachedOrdersController = new OrdersController(client);
   return cachedOrdersController;
+}
+
+export function getPaymentsController(): PaymentsController {
+  if (cachedPaymentsController) {
+    return cachedPaymentsController;
+  }
+
+  const client = getPayPalClient();
+  cachedPaymentsController = new PaymentsController(client);
+  return cachedPaymentsController;
 }

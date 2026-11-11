@@ -2,6 +2,7 @@
 
 import { Alert, AlertDescription } from '@workspace/ui/components/alert';
 import { Button } from '@workspace/ui/components/button';
+import { Checkbox } from '@workspace/ui/components/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -12,13 +13,14 @@ import {
 } from '@workspace/ui/components/dialog';
 import { Input } from '@workspace/ui/components/input';
 import { Label } from '@workspace/ui/components/label';
-import { AlertCircle, Loader2 } from 'lucide-react';
+import { AlertCircle, Loader2, ShieldCheck } from 'lucide-react';
 import * as React from 'react';
 import { toast } from 'sonner';
 
 export interface PolicyData {
   maxDailySpendCents: number;
   requireApprovalAboveCents: number;
+  requireApprovalForNonRefundable?: boolean;
   remainingDailySpendCents?: number;
   spentLast24HoursCents?: number;
 }
@@ -38,6 +40,8 @@ export function EditGuardrailsDialog({
 }: EditGuardrailsDialogProps) {
   const [dailyLimitDollars, setDailyLimitDollars] = React.useState('500.00');
   const [approvalThresholdDollars, setApprovalThresholdDollars] = React.useState('50.00');
+  const [requireApprovalForNonRefundable, setRequireApprovalForNonRefundable] =
+    React.useState(false);
   const [isSaving, setIsSaving] = React.useState(false);
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
 
@@ -45,6 +49,7 @@ export function EditGuardrailsDialog({
     if (currentPolicy && open) {
       setDailyLimitDollars((currentPolicy.maxDailySpendCents / 100).toFixed(2));
       setApprovalThresholdDollars((currentPolicy.requireApprovalAboveCents / 100).toFixed(2));
+      setRequireApprovalForNonRefundable(Boolean(currentPolicy.requireApprovalForNonRefundable));
       setErrorMessage(null);
     }
   }, [currentPolicy, open]);
@@ -83,6 +88,7 @@ export function EditGuardrailsDialog({
           maxDailySpendCents,
           requireApprovalAboveCents,
           singleTransactionLimitCents: maxDailySpendCents,
+          requireApprovalForNonRefundable,
         }),
       });
 
@@ -154,6 +160,28 @@ export function EditGuardrailsDialog({
             <p className="text-muted-foreground text-xs">
               Purchases above this amount will pause for your approval before capture.
             </p>
+          </div>
+
+          <div className="border-border/80 bg-muted/20 hover:bg-muted/30 flex items-start space-x-3 rounded-lg border p-3.5 transition-colors">
+            <Checkbox
+              id="strict-compliance"
+              checked={requireApprovalForNonRefundable}
+              onCheckedChange={(checked) => setRequireApprovalForNonRefundable(Boolean(checked))}
+              className="mt-0.5"
+            />
+            <div className="space-y-1 leading-none">
+              <Label
+                htmlFor="strict-compliance"
+                className="text-foreground flex cursor-pointer items-center gap-1.5 text-xs font-semibold"
+              >
+                <ShieldCheck className="text-primary size-3.5" />
+                Strict Compliance Mode
+              </Label>
+              <p className="text-muted-foreground text-[11px] leading-relaxed">
+                Require human operator approval for all non-refundable and digital consumable items,
+                regardless of transaction amount.
+              </p>
+            </div>
           </div>
 
           <DialogFooter>

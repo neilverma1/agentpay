@@ -1,8 +1,42 @@
 'use client';
 
 import { cn } from '@workspace/ui/lib/utils';
+import { AlertTriangle } from 'lucide-react';
+import * as React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+
+function renderWithLucideWarning(nodes: React.ReactNode): React.ReactNode {
+  return React.Children.map(nodes, (child) => {
+    if (typeof child === 'string' && child.includes('⚠️')) {
+      const segments = child.split('⚠️');
+      return segments.flatMap((seg, i) =>
+        i === 0
+          ? [seg]
+          : [
+              <AlertTriangle
+                key={`warning-icon-${i}`}
+                className="mr-1.5 inline-block size-4 shrink-0 align-text-bottom text-amber-500"
+                aria-hidden="true"
+              />,
+              seg,
+            ],
+      );
+    }
+    if (
+      React.isValidElement(child) &&
+      child.props &&
+      (child.props as { children?: React.ReactNode }).children
+    ) {
+      return React.cloneElement(
+        child as React.ReactElement<{ children?: React.ReactNode }>,
+        undefined,
+        renderWithLucideWarning((child.props as { children?: React.ReactNode }).children),
+      );
+    }
+    return child;
+  });
+}
 
 export interface MarkdownContentProps {
   content: string;
@@ -15,7 +49,9 @@ export function MarkdownContent({ content, className }: MarkdownContentProps) {
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
-          p: ({ children }) => <p className="mb-2 leading-relaxed last:mb-0">{children}</p>,
+          p: ({ children }) => (
+            <p className="mb-2 leading-relaxed last:mb-0">{renderWithLucideWarning(children)}</p>
+          ),
           strong: ({ children }) => (
             <strong className="text-foreground font-semibold">{children}</strong>
           ),
@@ -52,16 +88,18 @@ export function MarkdownContent({ content, className }: MarkdownContentProps) {
               {children}
             </blockquote>
           ),
-          a: ({ href, children }) => (
-            <a
-              href={href}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary font-medium underline underline-offset-4 hover:opacity-80"
-            >
-              {children}
-            </a>
-          ),
+          a: ({ href, children }) => {
+            const isInternal = href?.startsWith('/') || href?.startsWith('#');
+            return (
+              <a
+                href={href}
+                {...(!isInternal ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+                className="text-primary font-medium underline underline-offset-4 hover:opacity-80"
+              >
+                {children}
+              </a>
+            );
+          },
         }}
       >
         {content}

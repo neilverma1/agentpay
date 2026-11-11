@@ -1,6 +1,6 @@
-import { AppSidebar } from '@/components/layout/app-sidebar';
+import { AppSidebar, resetSidebarThreadsCache } from '@/components/layout/app-sidebar';
 import Header from '@/components/layout/header';
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const useAuthUserMock = vi.fn();
@@ -70,6 +70,8 @@ vi.mock('@workspace/ui/components/sidebar', () => ({
 describe('Layout Components (AppSidebar, Header)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.setItem('agentpay:sidebar:recents-open', 'true');
+    resetSidebarThreadsCache();
     useSidebarMock.mockReturnValue({ state: 'expanded', isMobile: true });
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
@@ -86,7 +88,50 @@ describe('Layout Components (AppSidebar, Header)', () => {
   });
 
   it('shows auth actions in sidebar when user is not authenticated', () => {
-    useAuthUserMock.mockReturnValue({ isAuthenticated: false });
+    useAuthUserMock.mockReturnValue({ isAuthenticated: false, isLoading: false, error: null });
+
+    render(<AppSidebar />);
+
+    expect(screen.getByRole('button', { name: /sign up/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument();
+    expect(screen.queryByText('NavUser Mock')).not.toBeInTheDocument();
+  });
+
+  it('renders skeleton only during initial active loading without errors', () => {
+    useAuthUserMock.mockReturnValue({ isAuthenticated: false, isLoading: true, error: null });
+
+    const { container } = render(<AppSidebar />);
+
+    // Skeleton elements are present and buttons are not rendered
+    expect(screen.queryByRole('button', { name: /sign up/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /sign in/i })).not.toBeInTheDocument();
+    expect(screen.queryByText('NavUser Mock')).not.toBeInTheDocument();
+    expect(
+      container.querySelector('footer [data-slot="skeleton"]') ||
+        container.querySelector('footer .animate-pulse'),
+    ).not.toBeNull();
+  });
+
+  it('renders sign up and sign in when session is not fetched correctly or returns error', () => {
+    useAuthUserMock.mockReturnValue({
+      isAuthenticated: false,
+      isLoading: false,
+      error: { message: 'Failed to fetch session' },
+    });
+
+    render(<AppSidebar />);
+
+    expect(screen.getByRole('button', { name: /sign up/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument();
+    expect(screen.queryByText('NavUser Mock')).not.toBeInTheDocument();
+  });
+
+  it('renders sign up and sign in even if isAuthLoading was true but an error exists', () => {
+    useAuthUserMock.mockReturnValue({
+      isAuthenticated: false,
+      isLoading: true,
+      error: { message: 'Network connection failed' },
+    });
 
     render(<AppSidebar />);
 
@@ -96,11 +141,86 @@ describe('Layout Components (AppSidebar, Header)', () => {
   });
 
   it('shows nav user when authenticated', () => {
-    useAuthUserMock.mockReturnValue({ isAuthenticated: true });
+    useAuthUserMock.mockReturnValue({ isAuthenticated: true, isLoading: false, error: null });
 
     render(<AppSidebar />);
 
     expect(screen.getByText('NavUser Mock')).toBeInTheDocument();
+  });
+
+  it('updates thread in place seamlessly when receiving threads-updated event without refetching', async () => {
+    useAuthUserMock.mockReturnValue({ isAuthenticated: true, isLoading: false, error: null });
+
+    render(<AppSidebar />);
+
+    // Initial fetch completed
+    await screen.findByText('Order Anthropic API Credits');
+
+    // Clear fetch mock call counts
+    (global.fetch as unknown as { mockClear: () => void }).mockClear();
+
+    // Dispatch update event with granular details
+    act(() => {
+      window.dispatchEvent(
+        new CustomEvent('agentpay:threads-updated', {
+          detail: {
+            action: 'update',
+            threadId: 'thread-1',
+            title: 'Updated Anthropic Order',
+            status: 'completed',
+          },
+        }),
+      );
+    });
+
+    // Title updated in-place immediately without triggering a full network refetch
+    expect(screen.getByText('Updated Anthropic Order')).toBeInTheDocument();
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it('adds and removes threads in place without showing loading skeleton', async () => {
+    useAuthUserMock.mockReturnValue({ isAuthenticated: true, isLoading: false, error: null });
+
+    const { container } = render(<AppSidebar />);
+    await screen.findByText('Order Anthropic API Credits');
+
+    (global.fetch as unknown as { mockClear: () => void }).mockClear();
+
+    // Create thread
+    act(() => {
+      window.dispatchEvent(
+        new CustomEvent('agentpay:threads-updated', {
+          detail: {
+            action: 'create',
+            thread: {
+              id: 'thread-2',
+              title: 'Buy AWS Credits',
+              status: 'active',
+            },
+          },
+        }),
+      );
+    });
+
+    expect(screen.getByText('Buy AWS Credits')).toBeInTheDocument();
+    expect(global.fetch).not.toHaveBeenCalled();
+
+    // Delete thread
+    act(() => {
+      window.dispatchEvent(
+        new CustomEvent('agentpay:threads-updated', {
+          detail: {
+            action: 'delete',
+            threadId: 'thread-1',
+          },
+        }),
+      );
+    });
+
+    expect(screen.queryByText('Order Anthropic API Credits')).not.toBeInTheDocument();
+    expect(screen.getByText('Buy AWS Credits')).toBeInTheDocument();
+    // No skeletons should be rendered in Recents during updates
+    expect(container.querySelectorAll('.space-y-1 [data-slot="skeleton"]')).toHaveLength(0);
   });
 
   it('renders mobile header when sidebar says mobile', () => {

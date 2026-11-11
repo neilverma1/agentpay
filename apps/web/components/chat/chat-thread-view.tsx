@@ -38,6 +38,7 @@ import {
   ShieldCheck,
   SlidersHorizontal,
   Trash2,
+  TrendingDown,
   User,
   X,
 } from 'lucide-react';
@@ -75,6 +76,9 @@ function formatRuleTrigger(rule: unknown): string {
   if (typeof rule !== 'string' || !rule) {
     return 'Exceeds autonomous spending threshold. Authorization required before PayPal capture.';
   }
+  if (rule === 'strict_compliance_non_refundable') {
+    return 'Strict Compliance Mode enabled: This final-sale (non-refundable) item requires explicit operator authorization before funds are captured.';
+  }
   if (rule === 'require_approval_above_cents') {
     return 'Exceeds autonomous spending threshold. Requires operator authorization before PayPal captures funds.';
   }
@@ -95,7 +99,10 @@ export function ChatThreadView({ threadId }: ChatThreadViewProps) {
   const [messages, setMessages] = React.useState<ChatMessageItem[]>([]);
   const [inputText, setInputText] = React.useState('');
   const [isStreaming, setIsStreaming] = React.useState(false);
+  const [streamingMessageId, setStreamingMessageId] = React.useState<string | null>(null);
   const [streamingReasoning, setStreamingReasoning] = React.useState<ReasoningStep[]>([]);
+  const [messageDurations, setMessageDurations] = React.useState<Record<string, number>>({});
+  const streamStartTimeRef = React.useRef<number | null>(null);
   const [actionCardState, setActionCardState] = React.useState<
     Record<string, 'pending' | 'approved' | 'rejected'>
   >({});
@@ -159,7 +166,11 @@ export function ChatThreadView({ threadId }: ChatThreadViewProps) {
       if (!res.ok) throw new Error('Failed to delete thread');
       toast.success('Mission thread deleted');
       if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('agentpay:threads-updated'));
+        window.dispatchEvent(
+          new CustomEvent('agentpay:threads-updated', {
+            detail: { action: 'delete', threadId },
+          }),
+        );
       }
       router.push('/chat');
     } catch {
@@ -202,7 +213,11 @@ export function ChatThreadView({ threadId }: ChatThreadViewProps) {
       setIsEditingTitle(false);
       toast.success('Mission renamed');
       if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('agentpay:threads-updated'));
+        window.dispatchEvent(
+          new CustomEvent('agentpay:threads-updated', {
+            detail: { action: 'update', threadId, title: data.thread.title },
+          }),
+        );
       }
     } catch (err) {
       console.error(err);
@@ -447,9 +462,22 @@ export function ChatThreadView({ threadId }: ChatThreadViewProps) {
   const triggerStreamingExecution = async (promptToSend: string) => {
     if (isStreaming) return;
     setIsStreaming(true);
-    setStreamingReasoning([]);
+    streamStartTimeRef.current = Date.now();
 
     const tempAssistantId = `temp-${Date.now()}`;
+    setStreamingMessageId(tempAssistantId);
+
+    const initialReasoningStep: ReasoningStep = {
+      id: `step-${Date.now()}-0`,
+      text: 'Analyzing purchase intent & evaluating spending policy...',
+      timestamp: new Date().toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      }),
+    };
+    setStreamingReasoning([initialReasoningStep]);
+
     const initialAssistantMsg: ChatMessageItem = {
       id: tempAssistantId,
       role: 'assistant',
@@ -502,16 +530,47 @@ export function ChatThreadView({ threadId }: ChatThreadViewProps) {
               eventType === 'tool_call' ||
               eventType === 'reasoning_step'
             ) {
-              const newStep: ReasoningStep = {
-                id: `step-${Date.now()}-${streamingReasoning.length + 1}`,
-                text:
-                  (parsedData.thought as string) ||
-                  (parsedData.toolName as string) ||
-                  'Evaluating policy...',
-                timestamp: (parsedData.timestamp as string) || new Date().toLocaleTimeString(),
-              };
+              const newStepText =
+                (parsedData.thought as string) ||
+                (parsedData.toolName as string) ||
+                'Evaluating policy...';
 
-              setStreamingReasoning((prev) => [...prev, newStep]);
+              setStreamingReasoning((prev) => {
+                // If only placeholder exists and incoming thinking step covers initial analysis, update it smoothly
+                if (
+                  prev.length === 1 &&
+                  prev[0]?.id.endsWith('-0') &&
+                  newStepText.toLowerCase().includes('analyzing')
+                ) {
+                  return [
+                    {
+                      id: prev[0].id,
+                      text: newStepText,
+                      timestamp: (parsedData.timestamp as string) || prev[0].timestamp,
+                    },
+                  ];
+                }
+
+                // Avoid duplicate consecutive text entries
+                if (prev.length > 0 && prev[prev.length - 1]?.text === newStepText) {
+                  return prev;
+                }
+
+                return [
+                  ...prev,
+                  {
+                    id: `step-${Date.now()}-${prev.length + 1}`,
+                    text: newStepText,
+                    timestamp:
+                      (parsedData.timestamp as string) ||
+                      new Date().toLocaleTimeString([], {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit',
+                      }),
+                  },
+                ];
+              });
             } else if (eventType === 'text') {
               const textContent = (parsedData.content as string) || '';
               setMessages((prev) =>
@@ -602,38 +661,64 @@ export function ChatThreadView({ threadId }: ChatThreadViewProps) {
         ),
       );
     } finally {
+      if (streamStartTimeRef.current) {
+        const elapsedSeconds = Math.max(
+          0.6,
+          Math.round((Date.now() - streamStartTimeRef.current) / 100) / 10,
+        );
+        setMessageDurations((prev) => ({ ...prev, [tempAssistantId]: elapsedSeconds }));
+        streamStartTimeRef.current = null;
+      }
       setIsStreaming(false);
-      // Refresh messages from server to keep database state exact
+      setStreamingMessageId(null);
+      // Refresh messages and thread from server to keep database state exact
       try {
         const res = await fetch(`/api/v1/chat/threads/${threadId}`);
         if (res.ok) {
           const data = await res.json();
           setMessages(data.messages || []);
+          if (data.thread) {
+            setThread(data.thread);
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(
+                new CustomEvent('agentpay:threads-updated', {
+                  detail: {
+                    action: 'update',
+                    threadId,
+                    status: data.thread.status,
+                    title: data.thread.title,
+                  },
+                }),
+              );
+            }
+          }
         }
       } catch (e) {
         console.error(e);
-      }
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('agentpay:threads-updated'));
       }
     }
   };
   triggerStreamingRef.current = triggerStreamingExecution;
 
-  const handleSendPrompt = async () => {
-    if (!inputText.trim() || isStreaming) return;
-    const textToSend = inputText.trim();
-    setInputText('');
-
+  const handleSendPromptText = async (textToSend: string) => {
+    if (!textToSend.trim() || isStreaming) return;
+    const cleanText = textToSend.trim();
     const newMsg: ChatMessageItem = {
       id: `usr-${Date.now()}`,
       role: 'user',
-      content: textToSend,
+      content: cleanText,
       createdAt: new Date().toISOString(),
     };
 
     setMessages((prev) => [...prev, newMsg]);
-    await triggerStreamingExecution(textToSend);
+    await triggerStreamingExecution(cleanText);
+  };
+
+  const handleSendPrompt = async () => {
+    if (!inputText.trim() || isStreaming) return;
+    const text = inputText;
+    setInputText('');
+    await handleSendPromptText(text);
   };
 
   const handleApprove = async (approvalId: string, cardData?: Record<string, unknown>) => {
@@ -695,7 +780,11 @@ export function ChatThreadView({ threadId }: ChatThreadViewProps) {
       toast.success('Payment approved and captured via PayPal Sandbox.');
       refreshPolicy();
       if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('agentpay:threads-updated'));
+        window.dispatchEvent(
+          new CustomEvent('agentpay:threads-updated', {
+            detail: { action: 'update', threadId, status: 'completed' },
+          }),
+        );
       }
       setActionCardState((prev) => ({ ...prev, [approvalId]: 'approved' }));
       setActionCardDetails((prev) => {
@@ -714,6 +803,7 @@ export function ChatThreadView({ threadId }: ChatThreadViewProps) {
           },
         };
       });
+      refreshPolicy();
     } catch (err) {
       console.error('Approval execution error:', err);
       toast.error('An unexpected error occurred during approval.');
@@ -752,7 +842,11 @@ export function ChatThreadView({ threadId }: ChatThreadViewProps) {
       toast.info('Purchase declined by operator.');
       setActionCardState((prev) => ({ ...prev, [approvalId]: 'rejected' }));
       if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('agentpay:threads-updated'));
+        window.dispatchEvent(
+          new CustomEvent('agentpay:threads-updated', {
+            detail: { action: 'update', threadId, status: 'rejected' },
+          }),
+        );
       }
     } catch (err) {
       console.error('Decline execution error:', err);
@@ -791,18 +885,38 @@ export function ChatThreadView({ threadId }: ChatThreadViewProps) {
             }
 
             // Extract reasoning steps from message parts or current streaming
+            const partsReasoningSteps: ReasoningStep[] = (message.parts || [])
+              .filter((p) => p.type === 'reasoning_step')
+              .map((p, idx) => ({
+                id: (p.id as string) || `part-${idx}`,
+                text:
+                  (p.thought as string) ||
+                  (p.text as string) ||
+                  (p.toolName as string) ||
+                  'Step executed',
+                timestamp: (p.timestamp as string) || undefined,
+              }));
+
+            const isCurrentStreamingAssistant =
+              isStreaming && (message.id === streamingMessageId || message.id.startsWith('temp-'));
+
             const messageReasoningSteps: ReasoningStep[] =
-              message.parts
-                ?.filter((p) => p.type === 'reasoning_step')
-                .map((p, idx) => ({
-                  id: (p.id as string) || `part-${idx}`,
-                  text:
-                    (p.thought as string) ||
-                    (p.text as string) ||
-                    (p.toolName as string) ||
-                    'Step executed',
-                  timestamp: (p.timestamp as string) || undefined,
-                })) || (isStreaming && streamingReasoning.length > 0 ? streamingReasoning : []);
+              partsReasoningSteps.length > 0
+                ? partsReasoningSteps
+                : isCurrentStreamingAssistant
+                  ? streamingReasoning.length > 0
+                    ? streamingReasoning
+                    : [
+                        {
+                          id: 'step-eval-init',
+                          text: 'Analyzing purchase intent & evaluating spending policy...',
+                          timestamp: new Date().toLocaleTimeString([], {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          }),
+                        },
+                      ]
+                  : [];
 
             const actionCards = message.parts?.filter((p) => p.type === 'action_card') || [];
 
@@ -817,10 +931,10 @@ export function ChatThreadView({ threadId }: ChatThreadViewProps) {
                   {messageReasoningSteps.length > 0 && (
                     <Reasoning
                       steps={messageReasoningSteps}
-                      defaultOpen={isStreaming}
-                      isStreaming={isStreaming}
+                      defaultOpen={true}
+                      duration={messageDurations[message.id]}
+                      isStreaming={isStreaming && isCurrentStreamingAssistant}
                       className="border-none bg-transparent shadow-none"
-                      agentName={thread?.agent?.name || 'Buyer Agent'}
                     />
                   )}
 
@@ -830,6 +944,45 @@ export function ChatThreadView({ threadId }: ChatThreadViewProps) {
                       <MarkdownContent content={message.content} />
                     </div>
                   )}
+
+                  {/* Interactive Clarification Quick-Replies */}
+                  {(() => {
+                    const clarificationPart = message.parts?.find(
+                      (p) => p.type === 'clarification_request',
+                    ) as { options?: Array<{ label: string; prompt: string }> } | undefined;
+                    const isLatest =
+                      messages.filter((m) => m.role === 'assistant').slice(-1)[0]?.id ===
+                      message.id;
+
+                    if (
+                      !clarificationPart?.options ||
+                      !Array.isArray(clarificationPart.options) ||
+                      clarificationPart.options.length === 0
+                    ) {
+                      return null;
+                    }
+
+                    return (
+                      <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                        {clarificationPart.options.map((opt, optIdx) => (
+                          <Button
+                            key={optIdx}
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={isStreaming || !isLatest}
+                            onClick={() => handleSendPromptText(opt.prompt)}
+                            className="border-primary/40 bg-card hover:bg-primary/10 hover:border-primary text-foreground h-auto rounded-full px-3.5 py-1.5 text-xs font-medium shadow-xs transition-all hover:shadow-sm active:scale-[0.98]"
+                          >
+                            <span className="bg-primary/15 text-primary mr-1.5 flex size-4 items-center justify-center rounded-full text-[10px] font-bold">
+                              {optIdx + 1}
+                            </span>
+                            {opt.label}
+                          </Button>
+                        ))}
+                      </div>
+                    );
+                  })()}
 
                   {/* Inline Action Cards (Generative UI) */}
                   {actionCards.map((card, idx) => {
@@ -856,7 +1009,13 @@ export function ChatThreadView({ threadId }: ChatThreadViewProps) {
 
                     if (cardType === 'approval_required' || currentApprovalState === 'pending') {
                       if (currentApprovalState === 'approved') {
-                        return <PaymentReceiptCard key={approvalId} details={details} />;
+                        return (
+                          <PaymentReceiptCard
+                            key={approvalId}
+                            details={details}
+                            onRefundSuccess={refreshPolicy}
+                          />
+                        );
                       }
 
                       if (currentApprovalState === 'rejected') {
@@ -881,6 +1040,11 @@ export function ChatThreadView({ threadId }: ChatThreadViewProps) {
                         (typeof cardCreatedAt === 'string' &&
                           Date.now() - new Date(cardCreatedAt).getTime() > 24 * 60 * 60 * 1000);
 
+                      const isStrictCompliance =
+                        details.ruleTriggered === 'strict_compliance_non_refundable' ||
+                        Boolean(details.requireApprovalForNonRefundable);
+                      const isNonRefundable = details.refundable === false;
+
                       return (
                         <Card
                           key={approvalId}
@@ -892,25 +1056,50 @@ export function ChatThreadView({ threadId }: ChatThreadViewProps) {
                           )}
                         >
                           <CardHeader className="pb-3">
-                            <div className="flex items-center justify-between">
-                              <Badge
-                                variant="outline"
-                                className={cn(
-                                  'gap-1.5 text-xs font-medium',
-                                  isExpired
-                                    ? 'border-muted-foreground/40 bg-muted/60 text-muted-foreground'
-                                    : 'border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400',
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                <Badge
+                                  variant="outline"
+                                  className={cn(
+                                    'gap-1.5 text-xs font-medium',
+                                    isExpired
+                                      ? 'border-muted-foreground/40 bg-muted/60 text-muted-foreground'
+                                      : 'border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400',
+                                  )}
+                                >
+                                  {isExpired ? (
+                                    <Clock className="size-3.5" />
+                                  ) : (
+                                    <AlertTriangle className="size-3.5" />
+                                  )}
+                                  <span>
+                                    {isExpired ? 'Approval Expired' : 'Approval Required'}
+                                  </span>
+                                </Badge>
+                                {isStrictCompliance && (
+                                  <Badge
+                                    variant="outline"
+                                    className="border-primary/40 bg-primary/10 text-primary gap-1 px-2 py-0.5 text-xs font-medium"
+                                  >
+                                    <ShieldCheck className="size-3" />
+                                    <span>Strict Compliance</span>
+                                  </Badge>
                                 )}
-                              >
-                                {isExpired ? (
-                                  <Clock className="size-3.5" />
-                                ) : (
-                                  <AlertTriangle className="size-3.5" />
+                                {isNonRefundable && (
+                                  <Badge
+                                    variant="outline"
+                                    className="border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400"
+                                  >
+                                    Final Sale
+                                  </Badge>
                                 )}
-                                <span>{isExpired ? 'Approval Expired' : 'Approval Required'}</span>
-                              </Badge>
+                              </div>
                               <span className="text-muted-foreground font-mono text-xs">
-                                {isExpired ? 'Stale quote (> 24h)' : `Threshold: ${thresholdText}`}
+                                {isExpired
+                                  ? 'Stale quote (> 24h)'
+                                  : isStrictCompliance
+                                    ? 'Strict Compliance Active'
+                                    : `Threshold: ${thresholdText}`}
                               </span>
                             </div>
                             <CardTitle className="text-foreground pt-2 text-base font-semibold tracking-tight">
@@ -936,6 +1125,27 @@ export function ChatThreadView({ threadId }: ChatThreadViewProps) {
                                 </span>
                               </div>
                             </div>
+                            {Number(details.savingsCents) > 0 && (
+                              <div className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-800 dark:text-emerald-300">
+                                <TrendingDown className="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                                <span>
+                                  Smart Price Optimization: Saved $
+                                  {(Number(details.savingsCents) / 100).toFixed(2)} vs competing
+                                  catalog merchants
+                                </span>
+                              </div>
+                            )}
+                            {isNonRefundable && (
+                              <div className="flex items-start gap-2.5 rounded-lg border border-amber-500/30 bg-amber-500/10 p-2.5 text-xs text-amber-800 dark:text-amber-300">
+                                <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                                <div className="space-y-0.5">
+                                  <p className="font-semibold">Irrevocable Purchase</p>
+                                  <p className="text-muted-foreground text-[11px] leading-relaxed">
+                                    This item is non-refundable once approved and provisioned.
+                                  </p>
+                                </div>
+                              </div>
+                            )}
                             <p className="text-muted-foreground text-xs leading-relaxed">
                               {isExpired
                                 ? 'This approval request has expired because it was created over 24 hours ago. Current daily spend and item pricing require a fresh check.'
@@ -984,7 +1194,13 @@ export function ChatThreadView({ threadId }: ChatThreadViewProps) {
                     }
 
                     if (cardType === 'payment_completed') {
-                      return <PaymentReceiptCard key={approvalId} details={details} />;
+                      return (
+                        <PaymentReceiptCard
+                          key={approvalId}
+                          details={details}
+                          onRefundSuccess={refreshPolicy}
+                        />
+                      );
                     }
 
                     return null;

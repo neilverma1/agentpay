@@ -8,7 +8,6 @@ import {
   TraceCollapsible,
   TraceCollapsibleContent,
   TraceCollapsibleTrigger,
-  TraceDescription,
   TraceIcon,
   TraceLine,
   TraceTitle,
@@ -48,6 +47,7 @@ export interface ReasoningTriggerProps extends React.ComponentProps<
   isStreaming?: boolean;
   duration?: string | number;
   durationMs?: number;
+  stepCount?: number;
 }
 
 export function ReasoningTrigger({
@@ -55,6 +55,7 @@ export function ReasoningTrigger({
   isStreaming,
   duration,
   durationMs,
+  stepCount,
   className,
   children,
   ...props
@@ -73,7 +74,18 @@ export function ReasoningTrigger({
         ? `${(activeDurationMs / 1000).toFixed(1)}s`
         : undefined;
 
-  const titleText = title ?? (activeStreaming ? 'Thinking' : 'Thought');
+  let titleText = title;
+  if (!titleText) {
+    if (activeStreaming) {
+      titleText = 'Thinking...';
+    } else if (displayDuration) {
+      titleText = `Thought for ${displayDuration}`;
+    } else if (stepCount && stepCount > 0) {
+      titleText = `Thought (${stepCount} step${stepCount === 1 ? '' : 's'})`;
+    } else {
+      titleText = 'Thought';
+    }
+  }
 
   return (
     <TraceCollapsibleTrigger className={className} {...props}>
@@ -87,7 +99,6 @@ export function ReasoningTrigger({
             )}
           </TraceIcon>
           <TraceTitle>{titleText}</TraceTitle>
-          {displayDuration && <TraceDescription>{displayDuration}</TraceDescription>}
         </TraceLine>
       )}
     </TraceCollapsibleTrigger>
@@ -129,6 +140,7 @@ export interface ReasoningProps extends Omit<React.ComponentProps<typeof Trace>,
   defaultOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
   agentName?: string;
+  title?: string;
   children?: React.ReactNode;
 }
 
@@ -141,7 +153,8 @@ export function Reasoning({
   open: controlledOpen,
   defaultOpen,
   onOpenChange,
-  agentName = 'Buyer Agent',
+  agentName,
+  title,
   children,
   className,
   ...props
@@ -179,10 +192,11 @@ export function Reasoning({
           {children || (
             <>
               <ReasoningTrigger
-                title={agentName ? `${agentName} Reasoning` : undefined}
+                title={title}
                 isStreaming={isStreaming}
                 duration={duration}
                 durationMs={durationMs}
+                stepCount={steps?.length}
               />
               <ReasoningContent>
                 {text && <p className="mb-2 text-xs leading-relaxed">{text}</p>}
@@ -208,7 +222,7 @@ export function Reasoning({
                 {isStreaming && (
                   <div className="text-muted-foreground mt-2 flex items-center gap-1.5 text-xs">
                     <Sparkles aria-hidden="true" className="text-primary size-3 animate-spin" />
-                    <span className="text-[11px] italic">Evaluating spending guardrails...</span>
+                    <span className="italic">Evaluating spending guardrails...</span>
                   </div>
                 )}
               </ReasoningContent>

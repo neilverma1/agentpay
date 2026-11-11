@@ -14,18 +14,19 @@ import { Skeleton } from '@workspace/ui/components/skeleton';
 import { cn } from '@workspace/ui/lib/utils';
 import {
   ArrowUpRight,
+  Ban,
   Bot,
   ChevronDown,
-  Cloud,
-  Code2,
-  Cpu,
+  Coffee,
   CreditCard,
   DollarSign,
-  Layers,
+  Laptop,
   MessageSquare,
+  Mouse,
   ShieldCheck,
   SlidersHorizontal,
   Sparkles,
+  Zap,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -40,42 +41,106 @@ interface ThreadItem {
   updatedAt: string;
 }
 
+function getThreadStatusBadge(status: string) {
+  switch (status.toLowerCase()) {
+    case 'completed':
+    case 'settled':
+      return {
+        label: status === 'settled' ? 'Settled' : 'Completed',
+        className: 'border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-400',
+        dotColor: 'bg-sky-500',
+      };
+    case 'rejected':
+    case 'failed':
+      return {
+        label: status === 'rejected' ? 'Rejected' : 'Failed',
+        className: 'border-rose-500/30 bg-rose-500/10 text-rose-700 dark:text-rose-400',
+        dotColor: 'bg-rose-500',
+      };
+    case 'pending_approval':
+    case 'requires_approval':
+    case 'needs_approval':
+    case 'paused':
+      return {
+        label: 'Needs Approval',
+        className: 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400',
+        dotColor: 'bg-amber-500',
+      };
+    case 'refunded':
+      return {
+        label: 'Refunded',
+        className: 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400',
+        dotColor: 'bg-amber-500',
+      };
+    case 'active':
+      return {
+        label: 'Active',
+        className: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
+        dotColor: 'bg-emerald-500 animate-pulse',
+      };
+    default:
+      return {
+        label: status.replace(/_/g, ' '),
+        className: 'border-border/70 bg-muted/40 text-muted-foreground',
+        dotColor: 'bg-muted-foreground',
+      };
+  }
+}
+
 const starterPrompts = [
   {
-    title: 'Order Anthropic API Credits',
-    prompt: 'Buy 2 Anthropic developer tier API credits for $25.00',
+    title: 'Find Best Price: Logitech Mouse',
+    prompt: 'Buy Logitech MX Master 3S wireless mouse',
+    type: 'smart_comparison',
+    badge: 'Save $10.00 (B&H vs Best Buy)',
+    badgeColor: 'text-blue-700 bg-blue-500/10 border-blue-500/20 dark:text-blue-300',
+    icon: Mouse,
+    iconColor: 'text-blue-600 bg-blue-500/10 dark:text-blue-400',
+  },
+  {
+    title: 'Instant Buy: Anker Fast Charger',
+    prompt: 'Order Anker 65W GaN USB-C fast charger',
     type: 'autonomous',
-    badge: 'Under Threshold ($25.00)',
+    badge: 'Under Threshold ($29.99)',
     badgeColor: 'text-emerald-700 bg-emerald-500/10 border-emerald-500/20 dark:text-emerald-300',
-    icon: Cpu,
+    icon: Zap,
     iconColor: 'text-emerald-600 bg-emerald-500/10 dark:text-emerald-400',
   },
   {
-    title: 'Purchase Figma Pro Seat',
-    prompt: 'Purchase Figma Pro seat subscription for $45.00',
-    type: 'autonomous',
-    badge: 'Under Threshold ($45.00)',
-    badgeColor: 'text-emerald-700 bg-emerald-500/10 border-emerald-500/20 dark:text-emerald-300',
-    icon: Layers,
-    iconColor: 'text-emerald-600 bg-emerald-500/10 dark:text-emerald-400',
-  },
-  {
-    title: 'Acquire GitHub Team License',
-    prompt: 'Order GitHub Enterprise Team license for $85.00',
+    title: 'Approval Gate: Keychron Keyboard',
+    prompt: 'Purchase Keychron K2 wireless mechanical keyboard',
     type: 'approval_required',
-    badge: 'Triggers Approval ($85.00)',
+    badge: 'Triggers Approval ($79.00)',
     badgeColor: 'text-amber-700 bg-amber-500/10 border-amber-500/20 dark:text-amber-300',
-    icon: Code2,
+    icon: ShieldCheck,
     iconColor: 'text-amber-600 bg-amber-500/10 dark:text-amber-400',
   },
   {
-    title: 'Subscribe to AWS Compute',
-    prompt: 'Subscribe to AWS Cloud compute reserve for $120.00',
+    title: 'Exceeds Cap: MacBook Pro 16"',
+    prompt: 'Purchase Apple MacBook Pro 16-inch',
     type: 'exceeds_cap',
-    badge: 'Exceeds Cap ($120.00)',
+    badge: 'Exceeds Cap ($2,499.00)',
     badgeColor: 'text-rose-700 bg-rose-500/10 border-rose-500/20 dark:text-rose-300',
-    icon: Cloud,
+    icon: Laptop,
     iconColor: 'text-rose-600 bg-rose-500/10 dark:text-rose-400',
+  },
+  {
+    title: 'Perishable: Artisan Espresso Beans',
+    prompt: 'Order artisan espresso whole beans 2 lb bag',
+    type: 'strict_compliance',
+    badge: 'Final Sale Item ($32.00)',
+    badgeColor: 'text-purple-700 bg-purple-500/10 border-purple-500/20 dark:text-purple-300',
+    icon: Coffee,
+    iconColor: 'text-purple-600 bg-purple-500/10 dark:text-purple-400',
+  },
+  {
+    title: 'Prohibited: LuckySpin Casino Chips',
+    prompt: 'Buy 100 chips from LuckySpin Casino',
+    type: 'blocked_category',
+    badge: 'Blocked: Gambling',
+    badgeColor: 'text-destructive bg-destructive/10 border-destructive/20',
+    icon: Ban,
+    iconColor: 'text-destructive bg-destructive/10',
   },
 ];
 
@@ -132,6 +197,13 @@ export function ChatLauncher() {
       }
 
       const data = await res.json();
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent('agentpay:threads-updated', {
+            detail: { action: 'create', thread: data.thread },
+          }),
+        );
+      }
       router.push(`/chat/${data.thread.id}`);
     } catch (err) {
       console.error(err);
@@ -227,7 +299,7 @@ export function ChatLauncher() {
           onChange={setPromptText}
           onSubmit={() => handleCreateThread()}
           isLoading={isCreating}
-          placeholder='Tell the agent what to buy (e.g. "Purchase 2 Anthropic developer API credits for $25.00")...'
+          placeholder='Tell the agent what to buy (e.g. "Buy Logitech MX Master 3S mouse" or "Order Anker fast charger")...'
           hintText="Enter to launch"
           compact
         />
@@ -356,9 +428,23 @@ export function ChatLauncher() {
                   </div>
 
                   <div className="flex shrink-0 items-center gap-2">
-                    <Badge variant="outline" className="px-1.5 py-0 text-[10px] capitalize">
-                      {thread.status}
-                    </Badge>
+                    {(() => {
+                      const badgeInfo = getThreadStatusBadge(thread.status);
+                      return (
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            'inline-flex items-center gap-1.5 px-2 py-0.5 text-[10px] font-medium capitalize',
+                            badgeInfo.className,
+                          )}
+                        >
+                          <span
+                            className={cn('size-1.5 shrink-0 rounded-full', badgeInfo.dotColor)}
+                          />
+                          <span>{badgeInfo.label}</span>
+                        </Badge>
+                      );
+                    })()}
                   </div>
                 </Link>
               ))}

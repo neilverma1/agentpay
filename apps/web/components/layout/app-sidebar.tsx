@@ -40,6 +40,14 @@ interface SidebarThread {
 
 const RECENTS_STORAGE_KEY = 'agentpay:sidebar:recents-open';
 
+let cachedSidebarThreads: SidebarThread[] = [];
+let hasFetchedSidebarThreads = false;
+
+export function resetSidebarThreadsCache() {
+  cachedSidebarThreads = [];
+  hasFetchedSidebarThreads = false;
+}
+
 function getStatusDotColor(status: string): string {
   switch (status.toLowerCase()) {
     case 'active':
@@ -53,6 +61,8 @@ function getStatusDotColor(status: string): string {
       return 'bg-sky-500';
     case 'archived':
       return 'bg-muted-foreground/50';
+    case 'refunded':
+      return 'bg-amber-500';
     case 'failed':
     case 'rejected':
       return 'bg-rose-500';
@@ -85,13 +95,16 @@ function getStatusLabel(status: string): string {
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname();
   const { state } = useSidebar();
-  const { isAuthenticated, isLoading: isAuthLoading } = useAuthUser();
+  const { isAuthenticated, isLoading: isAuthLoading, error: authError } = useAuthUser();
   const isSidebarExpanded = state === 'expanded';
 
-  const [threads, setThreads] = React.useState<SidebarThread[]>([]);
-  const [isLoadingThreads, setIsLoadingThreads] = React.useState(true);
+  const [threads, setThreads] = React.useState<SidebarThread[]>(() => cachedSidebarThreads);
+  const [isLoadingThreads, setIsLoadingThreads] = React.useState<boolean>(
+    () => !hasFetchedSidebarThreads && cachedSidebarThreads.length === 0,
+  );
   const [isRecentsOpen, setIsRecentsOpen] = React.useState(false);
   const hasInitializedPref = React.useRef(false);
+  const debounceTimerRef = React.useRef<NodeJS.Timeout | null>(null);
 
   // Read saved preference from browser storage or auto-open on active chat if no preference exists
   React.useEffect(() => {
@@ -119,12 +132,18 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     }
   }, []);
 
-  const fetchThreads = React.useCallback(async () => {
+  const fetchThreads = React.useCallback(async (silent = false) => {
+    if (!silent && cachedSidebarThreads.length === 0) {
+      setIsLoadingThreads(true);
+    }
     try {
       const res = await fetch('/api/v1/chat/threads?limit=20');
       if (res.ok) {
         const data = await res.json();
-        setThreads(data.threads || []);
+        const loaded: SidebarThread[] = data.threads || [];
+        cachedSidebarThreads = loaded;
+        hasFetchedSidebarThreads = true;
+        setThreads(loaded);
       }
     } catch (err) {
       console.error('Failed to load recent threads for sidebar', err);
@@ -133,25 +152,85 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     }
   }, []);
 
+  const showAuthSkeleton = isAuthLoading && !authError;
+
   React.useEffect(() => {
     if (typeof window === 'undefined') return;
-    if (isAuthLoading) return;
+    if (showAuthSkeleton) return;
     if (!isAuthenticated) {
+      resetSidebarThreadsCache();
+      setThreads([]);
       setIsLoadingThreads(false);
       return;
     }
-    setIsLoadingThreads(true);
-    fetchThreads();
 
-    const handleUpdate = () => {
-      fetchThreads();
+    if (!hasFetchedSidebarThreads) {
+      fetchThreads(false);
+    }
+
+    const handleUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent<{
+        action?: 'create' | 'update' | 'delete';
+        threadId?: string;
+        title?: string;
+        status?: string;
+        thread?: SidebarThread;
+      }>;
+      const detail = customEvent.detail;
+
+      if (detail?.action === 'create' && detail.thread) {
+        setThreads((prev) => {
+          const filtered = prev.filter((t) => t.id !== detail.thread!.id);
+          const updated = [detail.thread!, ...filtered];
+          cachedSidebarThreads = updated;
+          return updated;
+        });
+        return;
+      }
+
+      if (detail?.action === 'update' && detail.threadId) {
+        setThreads((prev) => {
+          const updated = prev.map((t) =>
+            t.id === detail.threadId
+              ? {
+                  ...t,
+                  ...(detail.title ? { title: detail.title } : {}),
+                  ...(detail.status ? { status: detail.status } : {}),
+                }
+              : t,
+          );
+          cachedSidebarThreads = updated;
+          return updated;
+        });
+        return;
+      }
+
+      if (detail?.action === 'delete' && detail.threadId) {
+        setThreads((prev) => {
+          const updated = prev.filter((t) => t.id !== detail.threadId);
+          cachedSidebarThreads = updated;
+          return updated;
+        });
+        return;
+      }
+
+      // If no granular detail, debounce the background sync silently without showing skeletons
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+      debounceTimerRef.current = setTimeout(() => {
+        fetchThreads(true);
+      }, 300);
     };
 
     window.addEventListener('agentpay:threads-updated', handleUpdate);
     return () => {
       window.removeEventListener('agentpay:threads-updated', handleUpdate);
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
     };
-  }, [isAuthenticated, isAuthLoading, pathname, fetchThreads]);
+  }, [isAuthenticated, showAuthSkeleton, fetchThreads]);
 
   // The landing page is for signed-out visitors and has no app sidebar.
   if (pathname === '/') return null;
@@ -215,7 +294,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <CollapsibleContent className="min-h-0 flex-1 overflow-y-auto pt-1 pr-1">
               <SidebarGroupContent>
                 <SidebarMenu className="space-y-1">
-                  {(isLoadingThreads || isAuthLoading) && threads.length === 0 ? (
+                  {(isLoadingThreads || showAuthSkeleton) && threads.length === 0 ? (
                     <>
                       {Array.from({ length: 6 }).map((_, i) => (
                         <SidebarMenuItem key={i}>
@@ -263,7 +342,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </Collapsible>
       </SidebarContent>
       <SidebarFooter className="border-sidebar-border border-t">
-        {isAuthLoading ? (
+        {showAuthSkeleton ? (
           <div className="flex h-12 w-full items-center gap-2 px-2">
             <Skeleton className="size-8 shrink-0 rounded-lg" />
             {isSidebarExpanded && (

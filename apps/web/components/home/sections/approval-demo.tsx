@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { Badge } from '@workspace/ui/components/badge';
 import { Button } from '@workspace/ui/components/button';
@@ -114,7 +114,7 @@ function buildSteps(status: DemoStatus): Step[] {
   }
 }
 
-export function HeroAgentDemo(): ReactElement {
+export function ApprovalDemo(): ReactElement {
   const [status, setStatus] = useState<DemoStatus>('pending');
   const steps = buildSteps(status);
 

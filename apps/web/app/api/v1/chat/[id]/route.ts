@@ -5,7 +5,7 @@ import {
   getOfferById,
   resolveClarificationReply,
 } from '@workspace/agent';
-import { and, chatMessage, chatThread, db, desc, eq } from '@workspace/db';
+import { agent, and, chatMessage, chatThread, db, desc, eq } from '@workspace/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -171,8 +171,37 @@ export async function POST(
           }
         }
 
+        let activeAgentId = thread.agentId;
+        const currentAgent = await db.query.agent.findFirst({
+          where: eq(agent.id, thread.agentId),
+        });
+
+        if (!currentAgent || currentAgent.userId !== session.user.id) {
+          let userAgent = await db.query.agent.findFirst({
+            where: eq(agent.userId, session.user.id),
+          });
+          if (!userAgent) {
+            const [created] = await db
+              .insert(agent)
+              .values({
+                userId: session.user.id,
+                name: 'Primary Commerce Agent',
+                description: 'Autonomous financial agent with spending guardrails',
+                model: 'gemini-2.5-flash',
+                status: 'active',
+              })
+              .returning();
+            userAgent = created!;
+          }
+          activeAgentId = userAgent.id;
+          await db
+            .update(chatThread)
+            .set({ agentId: activeAgentId })
+            .where(eq(chatThread.id, thread.id));
+        }
+
         const purchaseResult = await executeAgentPurchaseLoop({
-          agentId: thread.agentId,
+          agentId: activeAgentId,
           userId: session.user.id,
           prompt: effectivePrompt,
           idempotencyKey,

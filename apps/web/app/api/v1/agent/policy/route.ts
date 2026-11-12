@@ -44,22 +44,17 @@ export async function GET(req: NextRequest) {
     });
 
     if (!defaultAgent) {
-      const anyAgent = await db.query.agent.findFirst();
-      if (anyAgent) {
-        defaultAgent = anyAgent;
-      } else {
-        const [createdAgent] = await db
-          .insert(agent)
-          .values({
-            userId: session.user.id,
-            name: 'Primary Commerce Agent',
-            description: 'Autonomous financial agent with spending guardrails',
-            model: 'gemini-2.5-flash',
-            status: 'active',
-          })
-          .returning();
-        defaultAgent = createdAgent!;
-      }
+      const [createdAgent] = await db
+        .insert(agent)
+        .values({
+          userId: session.user.id,
+          name: 'Primary Commerce Agent',
+          description: 'Autonomous financial agent with spending guardrails',
+          model: 'gemini-2.5-flash',
+          status: 'active',
+        })
+        .returning();
+      defaultAgent = createdAgent!;
     }
 
     const policy = await getOrCreateAgentPolicy(defaultAgent.id);
@@ -96,13 +91,22 @@ export async function PATCH(req: NextRequest) {
       return authError || NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const defaultAgent =
-      (await db.query.agent.findFirst({
-        where: eq(agent.userId, session.user.id),
-      })) || (await db.query.agent.findFirst());
+    let defaultAgent = await db.query.agent.findFirst({
+      where: eq(agent.userId, session.user.id),
+    });
 
     if (!defaultAgent) {
-      return NextResponse.json({ error: 'Agent not found' }, { status: 404 });
+      const [createdAgent] = await db
+        .insert(agent)
+        .values({
+          userId: session.user.id,
+          name: 'Primary Commerce Agent',
+          description: 'Autonomous financial agent with spending guardrails',
+          model: 'gemini-2.5-flash',
+          status: 'active',
+        })
+        .returning();
+      defaultAgent = createdAgent!;
     }
 
     const body = await req.json().catch(() => ({}));

@@ -143,32 +143,26 @@ export async function POST(req: NextRequest) {
     let agentId = validated.data.agentId;
 
     if (!agentId) {
-      const defaultAgent = await db.query.agent.findFirst({
+      let defaultAgent = await db.query.agent.findFirst({
         where: eq(agent.userId, session.user.id),
       });
-      if (defaultAgent) {
-        agentId = defaultAgent.id;
-      } else {
-        const anyAgent = await db.query.agent.findFirst();
-        if (anyAgent) {
-          agentId = anyAgent.id;
-        } else {
-          const [createdAgent] = await db
-            .insert(agent)
-            .values({
-              userId: session.user.id,
-              name: 'Primary Commerce Agent',
-              description: 'Autonomous financial agent with spending guardrails',
-              model: 'gemini-2.5-flash',
-              status: 'active',
-            })
-            .returning();
-          if (!createdAgent) {
-            return NextResponse.json({ error: 'Failed to create default agent' }, { status: 500 });
-          }
-          agentId = createdAgent.id;
+      if (!defaultAgent) {
+        const [createdAgent] = await db
+          .insert(agent)
+          .values({
+            userId: session.user.id,
+            name: 'Primary Commerce Agent',
+            description: 'Autonomous financial agent with spending guardrails',
+            model: 'gemini-2.5-flash',
+            status: 'active',
+          })
+          .returning();
+        if (!createdAgent) {
+          return NextResponse.json({ error: 'Failed to create default agent' }, { status: 500 });
         }
+        defaultAgent = createdAgent;
       }
+      agentId = defaultAgent.id;
     }
 
     const derivedTitle =

@@ -16,7 +16,13 @@
         "PAYPAL_ENVIRONMENT",
         "PAYPAL_SIMULATION",
         "PAYPAL_WEBHOOK_ID",
-        "GOOGLE_GENERATIVE_AI_API_KEY"
+        "PAYPAL_TUNNEL_URL",
+        "GOOGLE_GENERATIVE_AI_API_KEY",
+        "OPENAI_API_KEY",
+        "AGENTPAY_OPENAI_API_KEY",
+        "AGENTPAY_LLM_PROVIDER",
+        "AGENTPAY_OPENAI_MODEL",
+        "AGENTPAY_GEMINI_MODEL"
       ]
     },
     "check-types": {
@@ -68,7 +74,13 @@
         "PAYPAL_ENVIRONMENT",
         "PAYPAL_SIMULATION",
         "PAYPAL_WEBHOOK_ID",
-        "GOOGLE_GENERATIVE_AI_API_KEY"
+        "PAYPAL_TUNNEL_URL",
+        "GOOGLE_GENERATIVE_AI_API_KEY",
+        "OPENAI_API_KEY",
+        "AGENTPAY_OPENAI_API_KEY",
+        "AGENTPAY_LLM_PROVIDER",
+        "AGENTPAY_OPENAI_MODEL",
+        "AGENTPAY_GEMINI_MODEL"
       ]
     },
     "lint:fix": {

@@ -185,6 +185,8 @@ export function Reasoning({
     [currentOpen, handleOpenChange, isStreaming, duration, durationMs],
   );
 
+  const resolvedTitle = title ?? (agentName ? `${agentName} Reasoning` : undefined);
+
   return (
     <ReasoningContext.Provider value={contextValue}>
       <Trace className={cn('w-full border-none bg-transparent shadow-none', className)} {...props}>
@@ -192,7 +194,7 @@ export function Reasoning({
           {children || (
             <>
               <ReasoningTrigger
-                title={title}
+                title={resolvedTitle}
                 isStreaming={isStreaming}
                 duration={duration}
                 durationMs={durationMs}
@@ -222,7 +224,11 @@ export function Reasoning({
                 {isStreaming && (
                   <div className="text-muted-foreground mt-2 flex items-center gap-1.5 text-xs">
                     <Sparkles aria-hidden="true" className="text-primary size-3 animate-spin" />
-                    <span className="italic">Evaluating spending guardrails...</span>
+                    <span className="italic">
+                      {agentName
+                        ? `${agentName} evaluating guardrails...`
+                        : 'Evaluating spending guardrails...'}
+                    </span>
                   </div>
                 )}
               </ReasoningContent>

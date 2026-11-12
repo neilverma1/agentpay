@@ -95,12 +95,15 @@ export function AvatarUploader({ user }: AvatarUploaderProps) {
       return presigned.publicUrl;
     },
     onSuccess: () => {
-      toast.success('Avatar updated successfully!');
+      toast.success('Avatar updated');
       router.refresh();
     },
     onError: (err: Error) => {
       console.error('Avatar upload failed:', err);
-      toast.error(err.message || 'Failed to upload avatar');
+      toast.error('Upload Failed', {
+        description:
+          err.message || 'Could not update profile picture. Ensure the image is under 5MB.',
+      });
     },
     onSettled: () => {
       setUploadProgress(0);
@@ -122,7 +125,9 @@ export function AvatarUploader({ user }: AvatarUploaderProps) {
       router.refresh();
     },
     onError: (err: Error) => {
-      toast.error(err.message || 'Failed to remove avatar');
+      toast.error('Removal Failed', {
+        description: err.message || 'Could not remove profile picture. Please try again.',
+      });
     },
   });
 

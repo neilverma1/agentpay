@@ -26,9 +26,21 @@ export function PaypalLinkCard({ linkedEmail, isLinked }: PaypalLinkCardProps) {
   const [isLinking, setIsLinking] = useState(false);
 
   useEffect(() => {
-    if (returnStatus === 'linked') toast.success('PayPal account linked.');
-    if (returnStatus === 'cancelled') toast.info('PayPal linking was cancelled.');
-    if (returnStatus === 'error') toast.error('Could not link PayPal. Please try again.');
+    if (returnStatus === 'linked') {
+      toast.success('PayPal Connected', {
+        description: 'Your PayPal account is now ready for autonomous spending.',
+      });
+    }
+    if (returnStatus === 'cancelled') {
+      toast.info('Linking Cancelled', {
+        description: 'PayPal account connection was cancelled.',
+      });
+    }
+    if (returnStatus === 'error') {
+      toast.error('Connection Failed', {
+        description: 'Could not link PayPal. Please try again.',
+      });
+    }
   }, [returnStatus]);
 
   const handleLink = async () => {
@@ -41,7 +53,12 @@ export function PaypalLinkCard({ linkedEmail, isLinked }: PaypalLinkCardProps) {
       }
       window.location.assign(data.approveUrl);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Linking failed');
+      toast.error('Connection Failed', {
+        description:
+          err instanceof Error
+            ? err.message
+            : 'Unable to initiate PayPal linking. Please try again.',
+      });
       setIsLinking(false);
     }
   };

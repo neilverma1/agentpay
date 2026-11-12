@@ -211,7 +211,7 @@ export function ChatThreadView({ threadId }: ChatThreadViewProps) {
       const data = await res.json();
       setThread((prev) => (prev ? { ...prev, title: data.thread.title } : null));
       setIsEditingTitle(false);
-      toast.success('Mission renamed');
+      toast.success('Mission title updated');
       if (typeof window !== 'undefined') {
         window.dispatchEvent(
           new CustomEvent('agentpay:threads-updated', {
@@ -221,7 +221,12 @@ export function ChatThreadView({ threadId }: ChatThreadViewProps) {
       }
     } catch (err) {
       console.error(err);
-      toast.error(err instanceof Error ? err.message : 'Failed to rename mission');
+      toast.error('Rename Failed', {
+        description:
+          err instanceof Error
+            ? err.message
+            : 'Could not update the mission title. Please try again.',
+      });
     } finally {
       setIsSavingTitle(false);
     }
@@ -744,7 +749,9 @@ export function ChatThreadView({ threadId }: ChatThreadViewProps) {
           errMsg.includes('already been completed') ||
           errMsg.includes('already decided')
         ) {
-          toast.info('Transaction already approved and captured.');
+          toast.info('Already Processed', {
+            description: 'This transaction was already approved and captured.',
+          });
           setActionCardState((prev) => ({ ...prev, [approvalId]: 'approved' }));
           setActionCardDetails((prev) => ({
             ...prev,
@@ -757,7 +764,10 @@ export function ChatThreadView({ threadId }: ChatThreadViewProps) {
         }
 
         if (res.status === 410 || errMsg.toLowerCase().includes('expired')) {
-          toast.error(errMsg);
+          toast.error('Approval Expired', {
+            description:
+              'This request expired after 24 hours. Please start a fresh purchase mission.',
+          });
           setActionCardState((prev) => ({ ...prev, [approvalId]: 'rejected' }));
           setActionCardDetails((prev) => ({
             ...prev,
@@ -770,14 +780,32 @@ export function ChatThreadView({ threadId }: ChatThreadViewProps) {
           return;
         }
 
-        toast.error(errMsg);
+        if (
+          errMsg.toLowerCase().includes('no paypal account linked') ||
+          errMsg.includes('MISSING_PAYPAL_VAULT')
+        ) {
+          toast.error('No PayPal Account Linked', {
+            description:
+              'Please link your PayPal account in Settings so your agent can pay on your behalf.',
+            action: {
+              label: 'Link PayPal',
+              onClick: () => router.push('/settings/general#paypal'),
+            },
+          });
+          return;
+        }
+
+        const cleanErrMsg = errMsg.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+        toast.error(cleanErrMsg);
         return;
       }
 
       const resJson = await res.json();
       const captureResult = (resJson.result || resJson) as Record<string, unknown>;
 
-      toast.success('Payment approved and captured via PayPal Sandbox.');
+      toast.success('Payment Approved', {
+        description: 'Captured successfully via PayPal Sandbox.',
+      });
       refreshPolicy();
       if (typeof window !== 'undefined') {
         window.dispatchEvent(
@@ -806,7 +834,9 @@ export function ChatThreadView({ threadId }: ChatThreadViewProps) {
       refreshPolicy();
     } catch (err) {
       console.error('Approval execution error:', err);
-      toast.error('An unexpected error occurred during approval.');
+      toast.error('Approval Failed', {
+        description: 'Unable to process the approval decision. Please try again.',
+      });
     } finally {
       setActionLoadingId(null);
     }
@@ -835,11 +865,29 @@ export function ChatThreadView({ threadId }: ChatThreadViewProps) {
           return;
         }
 
-        toast.error(errMsg);
+        if (
+          errMsg.toLowerCase().includes('no paypal account linked') ||
+          errMsg.includes('MISSING_PAYPAL_VAULT')
+        ) {
+          toast.error('No PayPal Account Linked', {
+            description:
+              'Please link your PayPal account in Settings so your agent can pay on your behalf.',
+            action: {
+              label: 'Link PayPal',
+              onClick: () => router.push('/settings/general#paypal'),
+            },
+          });
+          return;
+        }
+
+        const cleanErrMsg = errMsg.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+        toast.error(cleanErrMsg);
         return;
       }
 
-      toast.info('Purchase declined by operator.');
+      toast.info('Purchase Declined', {
+        description: 'The autonomous transaction was rejected by operator.',
+      });
       setActionCardState((prev) => ({ ...prev, [approvalId]: 'rejected' }));
       if (typeof window !== 'undefined') {
         window.dispatchEvent(
@@ -850,7 +898,9 @@ export function ChatThreadView({ threadId }: ChatThreadViewProps) {
       }
     } catch (err) {
       console.error('Decline execution error:', err);
-      toast.error('An unexpected error occurred while declining.');
+      toast.error('Decline Failed', {
+        description: 'An unexpected error occurred while declining. Please try again.',
+      });
     } finally {
       setActionLoadingId(null);
     }

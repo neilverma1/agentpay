@@ -112,13 +112,13 @@ export function PaymentReceiptCard({ details, onRefundSuccess }: PaymentReceiptC
 
   const handleCopyCapture = async () => {
     await copyCaptureId(captureId);
-    toast.success('PayPal Capture ID copied to clipboard');
+    toast.success('Capture ID copied');
   };
 
   const handleCopyOrder = async () => {
     if (orderId) {
       await copyOrderId(orderId);
-      toast.success('PayPal Order ID copied to clipboard');
+      toast.success('Order ID copied');
     }
   };
 
@@ -132,7 +132,9 @@ export function PaymentReceiptCard({ details, onRefundSuccess }: PaymentReceiptC
       details.paypalOrderId;
 
     if (!targetId) {
-      toast.error('Unable to locate purchase reference for refund processing.');
+      toast.error('Refund Reference Missing', {
+        description: 'Unable to locate purchase reference for refund processing.',
+      });
       return;
     }
 
@@ -157,20 +159,22 @@ export function PaymentReceiptCard({ details, onRefundSuccess }: PaymentReceiptC
           typeof data.error === 'string'
             ? data.error
             : 'Failed to process refund with PayPal sandbox.';
-        toast.error(errorMsg);
+        toast.error('Refund Failed', { description: errorMsg });
         return;
       }
 
       setLocalStatus('refunded');
       const resolvedRefundId = (data.refundId as string) || 'COMPLETED';
       setRefundId(resolvedRefundId);
-      toast.success(
-        `Refund issued via PayPal: ${amountFormatted} restored to 24h spending ledger.`,
-      );
+      toast.success('Refund Completed', {
+        description: `${amountFormatted} refunded via PayPal and restored to 24h spending ledger.`,
+      });
       onRefundSuccess?.(resolvedRefundId);
     } catch (err) {
       console.error('Refund request error:', err);
-      toast.error('Network error during refund request.');
+      toast.error('Refund Failed', {
+        description: 'A network error occurred. Please check your connection and retry.',
+      });
     } finally {
       setIsRefunding(false);
     }

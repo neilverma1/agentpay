@@ -16,7 +16,8 @@ export function useSignIn(callbackUrl: string = DEFAULT_CALLBACK_URL) {
     onSuccess: (data, variables) => {
       if (data?.error) {
         if (data.error.status === 403 && data.error.code === 'EMAIL_NOT_VERIFIED') {
-          toast.error('Please verify your email address before signing in.', {
+          toast.error('Email Verification Required', {
+            description: 'Please verify your email address before signing in.',
             action: {
               label: verificationMutation.isPending ? 'Sending…' : 'Resend email',
               onClick: async () => {
@@ -26,19 +27,28 @@ export function useSignIn(callbackUrl: string = DEFAULT_CALLBACK_URL) {
           });
           return;
         }
-        toast.error(data.error.message || 'Something went wrong');
+        toast.error('Sign In Failed', {
+          description: data.error.message || 'Invalid email or password. Please try again.',
+        });
         return;
       }
 
       const signInData = data.data;
       if ('twoFactorRedirect' in signInData && signInData.twoFactorRedirect === true) {
-        toast.info('Two-factor authentication required');
+        toast.info('Two-Factor Authentication Required', {
+          description: 'Please complete 2FA verification to continue.',
+        });
         router.push(`/two-factor?callbackUrl=${encodeURIComponent(callbackUrl)}`);
         return;
       }
 
-      toast.success('Signed in successfully!');
+      toast.success('Welcome back', {
+        description: 'Signed in successfully.',
+      });
     },
-    onError: (error: Error) => toast.error(error?.message || 'Something went wrong'),
+    onError: (error: Error) =>
+      toast.error('Sign In Failed', {
+        description: error?.message || 'Something went wrong. Please try again.',
+      }),
   });
 }

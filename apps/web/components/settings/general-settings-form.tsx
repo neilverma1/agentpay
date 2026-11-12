@@ -64,19 +64,21 @@ export function GeneralSettingsForm({ user, children }: GeneralSettingsFormProps
     },
     onSuccess: (result) => {
       if (result.emailChanged) {
-        toast.success(
-          'Verification email sent! Please check your current email to approve the change.',
-          { duration: 5000 },
-        );
+        toast.success('Verification Email Sent', {
+          description: 'Please check your current email to approve the address change.',
+          duration: 5000,
+        });
       } else {
-        toast.success('Profile updated successfully!');
+        toast.success('Profile updated');
       }
       // Revalidate the server component so the form reflects the latest user data.
       router.refresh();
     },
     onError: (error: Error) => {
       console.error('Error updating profile:', error);
-      toast.error(error.message || 'Failed to update profile');
+      toast.error('Update Failed', {
+        description: error.message || 'Failed to update profile. Please try again.',
+      });
     },
   });
 

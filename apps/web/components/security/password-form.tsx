@@ -76,13 +76,17 @@ export function PasswordForm({ onSuccess }: PasswordFormProps) {
       return response.json();
     },
     onSuccess: () => {
-      toast.success(`Password set successfully!`);
+      toast.success('Password Created', {
+        description: 'Your account password has been set successfully.',
+      });
       form.reset();
       onSuccess?.();
     },
     onError: (error: Error) => {
       console.error(`Error setting password:`, error);
-      toast.error(error.message || `Failed to set password`);
+      toast.error('Set Password Failed', {
+        description: error.message || 'Could not set password. Please try again.',
+      });
     },
   });
 
@@ -96,13 +100,18 @@ export function PasswordForm({ onSuccess }: PasswordFormProps) {
       return result;
     },
     onSuccess: () => {
-      toast.success('Password changed successfully!');
+      toast.success('Password Updated', {
+        description: 'Your account password has been changed successfully.',
+      });
       form.reset();
       onSuccess?.();
     },
     onError: (error: Error) => {
       console.error('Error changing password:', error);
-      toast.error(error.message || 'Failed to change password');
+      toast.error('Update Failed', {
+        description:
+          error.message || 'Could not change password. Please check your current password.',
+      });
     },
   });
 

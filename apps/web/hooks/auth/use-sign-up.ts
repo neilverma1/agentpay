@@ -11,12 +11,19 @@ export function useSignUp() {
     mutationFn: (values: SignUpFormValues) => signUp.email(values),
     onSuccess: (data) => {
       if (data?.error) {
-        toast.error(data.error.message || 'Something went wrong');
+        toast.error('Sign Up Failed', {
+          description: data.error.message || 'Unable to create account. Please try again.',
+        });
         return;
       }
-      toast.success('Account created! Please check your email to verify your account.');
+      toast.success('Account Created', {
+        description: 'Please check your email to verify your account before signing in.',
+      });
       router.push('/sign-in');
     },
-    onError: (error: Error) => toast.error(error?.message || 'Something went wrong'),
+    onError: (error: Error) =>
+      toast.error('Sign Up Failed', {
+        description: error?.message || 'Unable to create account. Please try again.',
+      }),
   });
 }

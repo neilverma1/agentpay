@@ -62,12 +62,12 @@ export function useTelemetry(agentId: string) {
       queryClient.invalidateQueries({ queryKey: ['telemetry', agentId] });
 
       if (variables.action === 'freeze') {
-        toast.error('Emergency freeze activated', {
-          description: 'Agent wallet is frozen. All purchase intents and payments are blocked.',
+        toast.error('Emergency Freeze Activated', {
+          description: 'Agent wallet is frozen. All autonomous purchases and payments are halted.',
         });
       } else {
-        toast.success('Agent unfrozen', {
-          description: 'Agent wallet is active. Normal autonomous purchasing resumed.',
+        toast.success('Agent Resumed', {
+          description: 'Autonomous operations and wallet spending have resumed.',
         });
       }
     },

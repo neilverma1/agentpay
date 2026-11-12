@@ -32,12 +32,16 @@ export function ExtraSecurity() {
   const revokeAllMutation = useMutation({
     mutationFn: async () => revokeOtherSessions(),
     onSuccess: () => {
-      toast.success('Logged out from all other devices');
+      toast.success('Sessions Revoked', {
+        description: 'All other active device sessions have been signed out.',
+      });
       setShowDialog(false);
     },
     onError: (error: Error) => {
       console.error('Error revoking sessions:', error);
-      toast.error(error.message || 'Failed to revoke sessions');
+      toast.error('Revocation Failed', {
+        description: error.message || 'Could not revoke sessions. Please try again.',
+      });
     },
   });
 

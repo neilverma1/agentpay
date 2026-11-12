@@ -97,7 +97,9 @@ export function EditGuardrailsDialog({
         throw new Error(data.error || 'Failed to update policy');
       }
 
-      toast.success('Agent spending guardrails updated');
+      toast.success('Guardrails Updated', {
+        description: 'New spending limits and approval thresholds are now active.',
+      });
       onPolicyUpdated(data.policy);
       onOpenChange(false);
     } catch (err) {

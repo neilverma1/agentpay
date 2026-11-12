@@ -121,7 +121,7 @@ export async function createPayPalOrder(params: CreateOrderParams): Promise<Crea
 
   if (!params.vaultId) {
     throw new PayPalServiceError(
-      'No PayPal account linked. Please [link your PayPal account in Settings](/settings/general#paypal) so the agent can pay on your behalf.',
+      'No PayPal account linked. Please link your PayPal account in Settings so the agent can pay on your behalf.',
       422,
       { code: 'MISSING_PAYPAL_VAULT' },
     );

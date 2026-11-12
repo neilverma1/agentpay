@@ -34,6 +34,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  DATABASE_URL: 'postgresql://user:pass@localhost:5432/test'
+
 jobs:
   lint:
     name: Lint

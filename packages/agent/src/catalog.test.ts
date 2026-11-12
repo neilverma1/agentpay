@@ -20,12 +20,12 @@ describe('merchant catalog', () => {
 
   it('picks the cheapest of the best matching offers', () => {
     const offer = selectCheapestMatchingOffer('buy 4 gpu hours for training');
-    expect(offer?.offerId).toBe('gpu-nimbus-4h');
+    expect(offer?.offerId).toBe('gpu-runpod-4h');
     expect(offer?.priceCents).toBe(7450);
   });
 
   it('matches plural and singular forms', () => {
-    expect(selectCheapestMatchingOffer('api credit')?.offerId).toBe('api-credits-codepipe');
+    expect(selectCheapestMatchingOffer('api credit')?.offerId).toBe('api-credits-openai-15');
   });
 
   it('returns nothing for an unrelated or empty request', () => {
@@ -48,7 +48,7 @@ describe('merchant catalog', () => {
 
   it('resolves starter prompts from chat launcher to their exact merchants and amounts', () => {
     const mouse = selectCheapestMatchingOffer('Buy Logitech MX Master 3S wireless mouse');
-    expect(mouse?.merchantName).toBe('B&H Photo Video');
+    expect(mouse?.merchantName).toBe('Micro Center');
     expect(mouse?.priceCents).toBe(8900);
 
     const charger = selectCheapestMatchingOffer('Order Anker 65W GaN USB-C fast charger');
@@ -75,7 +75,7 @@ describe('merchant catalog', () => {
   });
 
   it('looks up offers by id and rejects unknown ids', () => {
-    expect(getOfferById('gpu-nimbus-4h')?.merchantName).toBe('CloudNimbus');
+    expect(getOfferById('gpu-runpod-4h')?.merchantName).toBe('RunPod');
     expect(getOfferById('made-up-offer')).toBeUndefined();
   });
 
@@ -99,8 +99,8 @@ describe('merchant catalog', () => {
 
   it('selects cheapest e-commerce merchant for Logitech mouse and computes price comparison', () => {
     const mouseOffer = selectCheapestMatchingOffer('Buy Logitech MX Master 3S mouse');
-    expect(mouseOffer?.offerId).toBe('electronics-logitech-mx3-bh');
-    expect(mouseOffer?.merchantName).toBe('B&H Photo Video');
+    expect(mouseOffer?.offerId).toBe('electronics-logitech-mx3-microcenter');
+    expect(mouseOffer?.merchantName).toBe('Micro Center');
     expect(mouseOffer?.priceCents).toBe(8900);
     expect(mouseOffer?.refundable).toBe(true);
 

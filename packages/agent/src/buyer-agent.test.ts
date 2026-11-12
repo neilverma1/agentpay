@@ -91,7 +91,7 @@ describe('buyer agent with the trusted catalog', () => {
     expect(selection.kind).toBe('selected');
     if (selection.kind === 'selected') {
       expect(selection.source).toBe('fallback');
-      expect(selection.offer.offerId).toBe('gpu-nimbus-4h');
+      expect(selection.offer.offerId).toBe('gpu-runpod-4h');
       expect(selection.quantity).toBe(1);
     }
   });
@@ -262,10 +262,10 @@ describe('buyer agent with the trusted catalog', () => {
       const selection = selectOfferWithoutModel('Reserve 4 GPU hours', []);
       expect(selection.kind).toBe('selected');
       if (selection.kind === 'selected') {
-        expect(selection.offer.offerId).toBe('gpu-nimbus-4h');
-        expect(selection.offer.priceCents).toBe(7450); // CloudNimbus $74.50
+        expect(selection.offer.offerId).toBe('gpu-runpod-4h');
+        expect(selection.offer.priceCents).toBe(7450); // RunPod $74.50
         expect(selection.priceComparison).toBeDefined();
-        // Competing options: Stratus $79.00, Cumulus $82.40. Max savings is $82.40 - $74.50 = $7.90 (790 cents)
+        // Competing options: Vultr $79.00, AWS $82.40. Max savings is $82.40 - $74.50 = $7.90 (790 cents)
         expect(selection.priceComparison?.savingsCents).toBe(790);
         expect(selection.priceComparison?.matchedCount).toBe(3);
         expect(selection.steps[1]?.thought).toContain('Saved $7.90');

@@ -92,7 +92,7 @@ const starterPrompts = [
     title: 'Find Best Price: Logitech Mouse',
     prompt: 'Buy Logitech MX Master 3S wireless mouse',
     type: 'smart_comparison',
-    badge: 'Save $10.00 (B&H vs Best Buy)',
+    badge: 'Save $10.00 (Micro Center vs Best Buy)',
     badgeColor: 'text-blue-700 bg-blue-500/10 border-blue-500/20 dark:text-blue-300',
     icon: Mouse,
     iconColor: 'text-blue-600 bg-blue-500/10 dark:text-blue-400',

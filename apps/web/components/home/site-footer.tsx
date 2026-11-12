@@ -1,8 +1,10 @@
-import ThemeSwitch from '@/components/ui/theme-switch';
-import Link from 'next/link';
-import type { ReactElement } from 'react';
+'use client';
 
 import { FullWidthDivider } from '@/components/home/frame';
+import ThemeSwitch from '@/components/ui/theme-switch';
+import { useAuthUser } from '@/hooks/use-auth-user';
+import Link from 'next/link';
+import type { ReactElement } from 'react';
 
 const PRODUCT_LINKS = [
   { href: '#how-it-works', label: 'How it works' },
@@ -11,13 +13,22 @@ const PRODUCT_LINKS = [
   { href: '#faq', label: 'FAQ' },
 ] as const;
 
-const ACCOUNT_LINKS = [
+const UNAUTH_ACCOUNT_LINKS = [
   { href: '/sign-in', label: 'Sign in' },
   { href: '/sign-up', label: 'Create an account' },
 ] as const;
 
+const AUTH_ACCOUNT_LINKS = [
+  { href: '/chat', label: 'Chat' },
+  { href: '/audit', label: 'Audit logs' },
+  { href: '/settings/general', label: 'Settings' },
+] as const;
+
 /** Footer, adapted from efferd footer-2. */
 export function SiteFooter(): ReactElement {
+  const { isAuthenticated } = useAuthUser();
+  const accountLinks = isAuthenticated ? AUTH_ACCOUNT_LINKS : UNAUTH_ACCOUNT_LINKS;
+
   return (
     <footer className="relative mt-auto">
       <div className="relative mx-auto w-full max-w-6xl border-x">
@@ -44,7 +55,7 @@ export function SiteFooter(): ReactElement {
             <h2 id="footer-account" className="text-muted-foreground text-sm">
               Account
             </h2>
-            {ACCOUNT_LINKS.map((link) => (
+            {accountLinks.map((link) => (
               <Link key={link.href} href={link.href} className="w-max text-sm hover:underline">
                 {link.label}
               </Link>

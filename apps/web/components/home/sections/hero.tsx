@@ -1,3 +1,5 @@
+'use client';
+
 import { Button } from '@workspace/ui/components/button';
 import Link from 'next/link';
 import type { ReactElement } from 'react';
@@ -5,9 +7,12 @@ import type { ReactElement } from 'react';
 import { DecisionStream } from '@/components/home/decision-stream/decision-stream';
 import { Cross, FullWidthDivider } from '@/components/home/frame';
 import { BUILT_ON } from '@/components/home/home-content';
+import { useAuthUser } from '@/hooks/use-auth-user';
 
 /** Hero: balanced two-column split with copy on the left and the live decision stream on the right. */
 export function Hero(): ReactElement {
+  const { isAuthenticated } = useAuthUser();
+
   return (
     <section aria-labelledby="hero-heading" className="relative">
       <div className="relative mx-auto grid w-full max-w-6xl grid-cols-[minmax(0,1fr)] border-x lg:grid-cols-12">
@@ -23,9 +28,15 @@ export function Hero(): ReactElement {
             through on their own, larger ones wait for you, and blocked ones never reach PayPal.
           </p>
           <div className="flex flex-wrap gap-3">
-            <Button asChild size="lg">
-              <Link href="/sign-up">Get started</Link>
-            </Button>
+            {isAuthenticated ? (
+              <Button asChild size="lg">
+                <Link href="/chat">Open app</Link>
+              </Button>
+            ) : (
+              <Button asChild size="lg">
+                <Link href="/sign-up">Get started</Link>
+              </Button>
+            )}
             <Button asChild size="lg" variant="outline">
               <a href="#how-it-works">See how it works</a>
             </Button>

@@ -1,11 +1,16 @@
+'use client';
+
 import { Button } from '@workspace/ui/components/button';
 import Link from 'next/link';
 import type { ReactElement } from 'react';
 
 import { FrameSection } from '@/components/home/frame';
+import { useAuthUser } from '@/hooks/use-auth-user';
 
 /** Closing call to action, adapted from efferd cta-2. */
 export function Cta(): ReactElement {
+  const { isAuthenticated } = useAuthUser();
+
   return (
     <FrameSection aria-labelledby="cta-heading" marked>
       <div className="px-6 py-16 md:px-10">
@@ -16,17 +21,31 @@ export function Cta(): ReactElement {
           Give your first agent a budget
         </h2>
         <p className="text-muted-foreground mt-3 max-w-[56ch]">
-          Create an account, set a policy, and ask the agent to buy something. It takes about two
-          minutes on the sandbox.
+          {isAuthenticated
+            ? 'Set a policy and ask your agent to buy something in chat. It takes about two minutes on the sandbox.'
+            : 'Create an account, set a policy, and ask the agent to buy something. It takes about two minutes on the sandbox.'}
         </p>
       </div>
       <div className="bg-muted/50 flex flex-wrap gap-3 border-t px-6 py-5 md:px-10">
-        <Button asChild size="lg">
-          <Link href="/sign-up">Create an account</Link>
-        </Button>
-        <Button asChild size="lg" variant="outline">
-          <Link href="/sign-in">Sign in</Link>
-        </Button>
+        {isAuthenticated ? (
+          <>
+            <Button asChild size="lg">
+              <Link href="/chat">Open app</Link>
+            </Button>
+            <Button asChild size="lg" variant="outline">
+              <Link href="/audit">Audit logs</Link>
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button asChild size="lg">
+              <Link href="/sign-up">Create an account</Link>
+            </Button>
+            <Button asChild size="lg" variant="outline">
+              <Link href="/sign-in">Sign in</Link>
+            </Button>
+          </>
+        )}
       </div>
     </FrameSection>
   );

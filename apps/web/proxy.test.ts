@@ -57,13 +57,13 @@ describe('proxy middleware', () => {
     expect(redirectMock.mock.calls[0]![0]!.toString()).toBe('https://example.com/chat');
   });
 
-  it('redirects authenticated users away from landing page to chat', async () => {
+  it('allows authenticated users to view the landing page', async () => {
     getSessionMock.mockResolvedValue({ user: { id: '1' } });
 
-    await proxy(makeRequest('https://example.com/') as NextRequest);
+    const result = await proxy(makeRequest('https://example.com/') as NextRequest);
 
-    expect(redirectMock).toHaveBeenCalledTimes(1);
-    expect(redirectMock.mock.calls[0]![0]!.toString()).toBe('https://example.com/chat');
+    expect(nextMock).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({ type: 'next' });
   });
 
   it('allows public routes for unauthenticated users', async () => {

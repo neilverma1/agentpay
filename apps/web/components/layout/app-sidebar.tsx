@@ -12,6 +12,13 @@ import {
   CollapsibleTrigger,
 } from '@workspace/ui/components/collapsible';
 import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from '@workspace/ui/components/empty';
+import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
@@ -27,7 +34,7 @@ import {
 } from '@workspace/ui/components/sidebar';
 import { Skeleton } from '@workspace/ui/components/skeleton';
 import { cn } from '@workspace/ui/lib/utils';
-import { ChevronRight, LogIn, UserPlus } from 'lucide-react';
+import { ChevronRight, LogIn, MessageSquare, UserPlus } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import * as React from 'react';
@@ -306,9 +313,17 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                       ))}
                     </>
                   ) : threads.length === 0 ? (
-                    <div className="text-muted-foreground px-2.5 py-2 text-xs">
-                      No previous missions
-                    </div>
+                    <Empty className="border p-4">
+                      <EmptyHeader className="gap-1">
+                        <EmptyMedia variant="icon" className="mb-1">
+                          <MessageSquare />
+                        </EmptyMedia>
+                        <EmptyTitle className="text-xs">No previous missions</EmptyTitle>
+                        <EmptyDescription className="text-xs">
+                          Your recent chats will appear here.
+                        </EmptyDescription>
+                      </EmptyHeader>
+                    </Empty>
                   ) : (
                     threads.map((thread) => (
                       <SidebarMenuItem key={thread.id}>

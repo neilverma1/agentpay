@@ -31,8 +31,8 @@ export async function proxy(req: NextRequest) {
     return NextResponse.redirect(new URL(`/sign-in?callbackUrl=${callbackUrl}`, nextUrl));
   }
 
-  // Redirect authenticated users away from auth pages and landing to the active workspace
-  if (isLoggedIn && (isAuthRoute || pathname === '/')) {
+  // Redirect authenticated users away from auth pages to the active workspace
+  if (isLoggedIn && isAuthRoute) {
     return NextResponse.redirect(new URL('/chat', nextUrl));
   }
 

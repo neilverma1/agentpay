@@ -2,6 +2,7 @@
 
 import { Cross, FullWidthDivider } from '@/components/home/frame';
 import { Logo } from '@/components/ui/logo';
+import { useAuthUser } from '@/hooks/use-auth-user';
 import { Button } from '@workspace/ui/components/button';
 import {
   Sheet,
@@ -25,6 +26,8 @@ const NAV_LINKS = [
 
 /** Marketing header framed with the same column rails, bottom rule, and corner crosses as the page sections. */
 export function SiteHeader(): ReactElement {
+  const { isAuthenticated } = useAuthUser();
+
   return (
     <header className="bg-background/90 supports-backdrop-filter:bg-background/70 sticky top-0 z-40 w-full backdrop-blur">
       <div className="relative mx-auto flex h-14 w-full max-w-6xl items-center justify-between gap-4 border-x px-6 md:px-10">
@@ -45,12 +48,20 @@ export function SiteHeader(): ReactElement {
         </nav>
 
         <div className="hidden items-center gap-2 md:flex">
-          <Button asChild variant="outline" size="sm">
-            <Link href="/sign-in">Sign in</Link>
-          </Button>
-          <Button asChild size="sm">
-            <Link href="/sign-up">Get started</Link>
-          </Button>
+          {isAuthenticated ? (
+            <Button asChild size="sm">
+              <Link href="/chat">Open app</Link>
+            </Button>
+          ) : (
+            <>
+              <Button asChild variant="outline" size="sm">
+                <Link href="/sign-in">Sign in</Link>
+              </Button>
+              <Button asChild size="sm">
+                <Link href="/sign-up">Get started</Link>
+              </Button>
+            </>
+          )}
         </div>
 
         <Sheet>
@@ -74,12 +85,20 @@ export function SiteHeader(): ReactElement {
               ))}
             </nav>
             <div className="mt-auto grid gap-2 p-4">
-              <Button asChild variant="outline">
-                <Link href="/sign-in">Sign in</Link>
-              </Button>
-              <Button asChild>
-                <Link href="/sign-up">Get started</Link>
-              </Button>
+              {isAuthenticated ? (
+                <Button asChild>
+                  <Link href="/chat">Open app</Link>
+                </Button>
+              ) : (
+                <>
+                  <Button asChild variant="outline">
+                    <Link href="/sign-in">Sign in</Link>
+                  </Button>
+                  <Button asChild>
+                    <Link href="/sign-up">Get started</Link>
+                  </Button>
+                </>
+              )}
             </div>
           </SheetContent>
         </Sheet>

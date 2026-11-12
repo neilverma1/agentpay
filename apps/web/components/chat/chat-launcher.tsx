@@ -98,10 +98,10 @@ const starterPrompts = [
     iconColor: 'text-blue-600 bg-blue-500/10 dark:text-blue-400',
   },
   {
-    title: 'Instant Buy: Anker Fast Charger',
-    prompt: 'Order Anker 65W GaN USB-C fast charger',
+    title: 'Clarification: Anker Fast Chargers',
+    prompt: 'Order 2 Anker 65W GaN USB-C fast chargers for $29.99',
     type: 'autonomous',
-    badge: 'Under Threshold ($29.99)',
+    badge: 'Unit Mismatch ($29.99 vs $59.98)',
     badgeColor: 'text-emerald-700 bg-emerald-500/10 border-emerald-500/20 dark:text-emerald-300',
     icon: Zap,
     iconColor: 'text-emerald-600 bg-emerald-500/10 dark:text-emerald-400',

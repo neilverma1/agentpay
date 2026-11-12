@@ -9,6 +9,7 @@ export const siteConfig: Metadata = {
     icon: [{ url: '/favicon.ico' }, { url: '/icon.png', type: 'image/png' }],
     apple: '/apple-touch-icon.png',
   },
+  manifest: '/site.webmanifest',
   metadataBase: new URL(BASE_URL),
   keywords: SITE_KEYWORDS,
   openGraph: {
